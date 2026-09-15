@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <WebServer.h>
+#include "WeatherService.h"
 
 class WebServerManager
 {
@@ -11,13 +12,16 @@ public:
 
     void begin();
     void handleClient();
+    void setWeatherService(WeatherService* service);
 
 private:
     WebServer server;
+    WeatherService* weather;
 
     void handleRoot();
     void handleSettings();
     void handleApiStatus();
+    void handleApiPage();
 };
 
 #endif

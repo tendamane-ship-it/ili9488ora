@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include "WebServerManager.h"
 #include "Pages.h"
+#include "WeatherService.h"
 #include <TFT_eSPI.h>
 #include <time.h>
 
@@ -21,7 +22,7 @@ const char* NTP_SERVER = "pool.ntp.org";
 TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
 WebServerManager webServer;
-
+WeatherService weather;
 
 // ============================================================
 // COLORS
@@ -31,6 +32,41 @@ WebServerManager webServer;
 #define COLOR_TIME  TFT_CYAN
 #define COLOR_DATE  TFT_WHITE
 #define COLOR_WIFI  TFT_GREEN
+
+// Emrat e diteve ne shqip
+const char* days[] = {
+    "e diel",
+    "e hene",
+    "e marte",
+    "e merkure",
+    "e enjte",
+    "e premte",
+    "e shtune"
+};
+
+// Emrat e muajve ne shqip
+const char* months[] = {
+    "janar",
+    "shkurt",
+    "mars",
+    "prill",
+    "maj",
+    "qershor",
+    "korrik",
+    "gusht",
+    "shtator",
+    "tetor",
+    "nentor",
+    "dhjetor"
+};
+
+#define DIGIT_W       84
+#define DIGIT_H       130
+#define SEG_THICK     13
+#define DIGIT_GAP     10
+#define CLOCK_Y       25
+
+const int COLON_X = 232;
 
 // ============================================================
 // CLOCK GEOMETRY
@@ -42,7 +78,7 @@ WebServerManager webServer;
 #define DIGIT_GAP     10
 #define CLOCK_Y       25
 
-const int COLON_X = 232;
+
 
 // ============================================================
 // 7-SEGMENT DIGIT MAP
@@ -318,7 +354,6 @@ void updateClock(struct tm& timeinfo)
         }
     }
 }
-
 // ============================================================
 // DATE
 // ============================================================
@@ -340,13 +375,16 @@ void updateDate(struct tm& timeinfo)
         COLOR_BG
     );
 
-    char dateText[40];
+    char dateText[50];
 
-    strftime(
+    snprintf(
         dateText,
         sizeof(dateText),
-        "%A, %d %B %Y",
-        &timeinfo
+        "%s, %02d %s %d",
+        days[timeinfo.tm_wday],
+        timeinfo.tm_mday,
+        months[timeinfo.tm_mon],
+        timeinfo.tm_year + 1900
     );
 
     tft.setTextColor(
@@ -365,7 +403,6 @@ void updateDate(struct tm& timeinfo)
 
     tft.print(dateText);
 }
-
 // ============================================================
 // WIFI INDICATOR
 // ============================================================
@@ -413,69 +450,52 @@ void updateWiFiIndicator()
 // ============================================================
 
 #define WEATHER_Y 245
+#define WEATHER_UPDATE_INTERVAL 300000UL
 
+unsigned long lastWeatherUpdate = 0;
 // ============================================================
-// SUN
+// MENU ICON
 // ============================================================
-
-void drawSun(int x, int y)
+void drawMenuIcon()
 {
-    // Center of sun
-    tft.fillCircle(
-        x,
-        y,
+    tft.fillRect(
+        8,
+        35,
+        55,
+        38,
+        COLOR_BG
+    );
+
+    tft.drawLine(
         18,
-        TFT_YELLOW
-    );
-
-    // Rays
-    tft.drawLine(x, y - 30, x, y - 23, TFT_YELLOW);
-    tft.drawLine(x, y + 23, x, y + 30, TFT_YELLOW);
-
-    tft.drawLine(x - 30, y, x - 23, y, TFT_YELLOW);
-    tft.drawLine(x + 23, y, x + 30, y, TFT_YELLOW);
-
-    tft.drawLine(
-        x - 21,
-        y - 21,
-        x - 16,
-        y - 16,
-        TFT_YELLOW
+        41,
+        48,
+        41,
+        TFT_WHITE
     );
 
     tft.drawLine(
-        x + 16,
-        y - 16,
-        x + 21,
-        y - 21,
-        TFT_YELLOW
+        18,
+        49,
+        48,
+        49,
+        TFT_WHITE
     );
 
     tft.drawLine(
-        x - 21,
-        y + 21,
-        x - 16,
-        y + 16,
-        TFT_YELLOW
-    );
-
-    tft.drawLine(
-        x + 16,
-        y + 16,
-        x + 21,
-        y + 21,
-        TFT_YELLOW
+        18,
+        57,
+        48,
+        57,
+        TFT_WHITE
     );
 }
-
-
 // ============================================================
 // WEATHER DISPLAY
 // ============================================================
-
 void drawWeather()
 {
-    // Clear only the weather area
+    // Clear weather area
     tft.fillRect(
         0,
         WEATHER_Y,
@@ -484,13 +504,345 @@ void drawWeather()
         COLOR_BG
     );
 
-    // Sun
-    drawSun(
-        145,
-        WEATHER_Y + 35
-    );
+    // Menu icon
+    drawMenuIcon();
 }
-   // ============================================================
+void drawWeatherIcon()
+{
+    int cx = 40;
+    int cy = WEATHER_Y + 37;
+
+    int code = weather.getData().weatherCode;
+
+    // =========================
+    // CLEAR SKY
+    // =========================
+    if (code == 0)
+    {
+        tft.fillCircle(
+            cx,
+            cy,
+            10,
+            TFT_YELLOW
+        );
+
+        // Rrezet
+        tft.drawLine(cx, cy - 17, cx, cy - 11, TFT_YELLOW);
+        tft.drawLine(cx, cy + 11, cx, cy + 17, TFT_YELLOW);
+
+        tft.drawLine(cx - 17, cy, cx - 11, cy, TFT_YELLOW);
+        tft.drawLine(cx + 11, cy, cx + 17, cy, TFT_YELLOW);
+
+        tft.drawLine(cx - 12, cy - 12, cx - 8, cy - 8, TFT_YELLOW);
+        tft.drawLine(cx + 8, cy - 8, cx + 12, cy - 12, TFT_YELLOW);
+
+        tft.drawLine(cx - 12, cy + 12, cx - 8, cy + 8, TFT_YELLOW);
+        tft.drawLine(cx + 8, cy + 8, cx + 12, cy + 12, TFT_YELLOW);
+    }
+
+    // =========================
+    // CLOUDY
+    // =========================
+    else if (code >= 1 && code <= 3)
+    {
+        tft.fillCircle(cx - 10, cy + 4, 9, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 2, cy - 2, 12, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 13, cy + 5, 8, TFT_LIGHTGREY);
+
+        tft.fillRect(
+            cx - 18,
+            cy + 4,
+            40,
+            12,
+            TFT_LIGHTGREY
+        );
+    }
+
+    // =========================
+    // FOG
+    // =========================
+    else if (code >= 45 && code <= 48)
+    {
+        tft.drawLine(
+            cx - 18, cy - 8,
+            cx + 18, cy - 8,
+            TFT_LIGHTGREY
+        );
+
+        tft.drawLine(
+            cx - 22, cy,
+            cx + 14, cy,
+            TFT_LIGHTGREY
+        );
+
+        tft.drawLine(
+            cx - 18, cy + 8,
+            cx + 18, cy + 8,
+            TFT_LIGHTGREY
+        );
+    }
+
+    // =========================
+    // RAIN
+    // =========================
+    else if (code >= 51 && code <= 67)
+    {
+        // Re
+        tft.fillCircle(cx - 9, cy - 1, 9, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 3, cy - 6, 12, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 14, cy, 8, TFT_LIGHTGREY);
+
+        tft.fillRect(
+            cx - 17,
+            cy,
+            39,
+            11,
+            TFT_LIGHTGREY
+        );
+
+        // Pikat e shiut
+        tft.drawLine(cx - 10, cy + 15, cx - 13, cy + 23, TFT_CYAN);
+        tft.drawLine(cx, cy + 15, cx - 3, cy + 23, TFT_CYAN);
+        tft.drawLine(cx + 10, cy + 15, cx + 7, cy + 23, TFT_CYAN);
+    }
+
+    // =========================
+    // SNOW
+    // =========================
+    else if (code >= 71 && code <= 77)
+    {
+        // Re
+        tft.fillCircle(cx - 9, cy - 1, 9, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 3, cy - 6, 12, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 14, cy, 8, TFT_LIGHTGREY);
+
+        tft.fillRect(
+            cx - 17,
+            cy,
+            39,
+            11,
+            TFT_LIGHTGREY
+        );
+
+        // Floket
+        tft.fillCircle(cx - 9, cy + 19, 3, TFT_WHITE);
+        tft.fillCircle(cx + 2, cy + 23, 3, TFT_WHITE);
+        tft.fillCircle(cx + 12, cy + 18, 3, TFT_WHITE);
+    }
+
+    // =========================
+    // SHOWERS
+    // =========================
+    else if (code >= 80 && code <= 82)
+    {
+        // Re
+        tft.fillCircle(cx - 9, cy - 1, 9, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 3, cy - 6, 12, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 14, cy, 8, TFT_LIGHTGREY);
+
+        tft.fillRect(
+            cx - 17,
+            cy,
+            39,
+            11,
+            TFT_LIGHTGREY
+        );
+
+        // Shi
+        tft.drawLine(cx - 9, cy + 15, cx - 12, cy + 23, TFT_CYAN);
+        tft.drawLine(cx + 1, cy + 15, cx - 2, cy + 23, TFT_CYAN);
+        tft.drawLine(cx + 11, cy + 15, cx + 8, cy + 23, TFT_CYAN);
+    }
+
+    // =========================
+    // SNOW SHOWERS
+    // =========================
+    else if (code >= 85 && code <= 86)
+    {
+        tft.fillCircle(cx - 9, cy - 1, 9, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 3, cy - 6, 12, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 14, cy, 8, TFT_LIGHTGREY);
+
+        tft.fillRect(
+            cx - 17,
+            cy,
+            39,
+            11,
+            TFT_LIGHTGREY
+        );
+
+        tft.fillCircle(cx - 8, cy + 19, 3, TFT_WHITE);
+        tft.fillCircle(cx + 3, cy + 23, 3, TFT_WHITE);
+        tft.fillCircle(cx + 13, cy + 18, 3, TFT_WHITE);
+    }
+
+    // =========================
+    // THUNDERSTORM
+    // =========================
+    else if (code >= 95 && code <= 99)
+    {
+        // Re
+        tft.fillCircle(cx - 9, cy - 1, 9, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 3, cy - 6, 12, TFT_LIGHTGREY);
+        tft.fillCircle(cx + 14, cy, 8, TFT_LIGHTGREY);
+
+        tft.fillRect(
+            cx - 17,
+            cy,
+            39,
+            11,
+            TFT_LIGHTGREY
+        );
+
+        // Rrufe
+        tft.fillTriangle(
+            cx + 1, cy + 10,
+            cx - 6, cy + 22,
+            cx + 1, cy + 19,
+            TFT_YELLOW
+        );
+
+        tft.fillTriangle(
+            cx + 1, cy + 19,
+            cx + 8, cy + 19,
+            cx + 1, cy + 29,
+            TFT_YELLOW
+        );
+    }
+
+    // =========================
+    // UNKNOWN
+    // =========================
+    else
+    {
+        // Ikonë neutrale
+        tft.drawCircle(
+            cx,
+            cy,
+            12,
+            TFT_WHITE
+        );
+
+        tft.drawLine(
+            cx - 6,
+            cy,
+            cx + 6,
+            cy,
+            TFT_WHITE
+        );
+    }
+}
+
+
+void updateWeatherDisplay()
+{
+    if (!weather.getData().valid)
+        return;
+
+    const WeatherData& data = weather.getData();
+
+    // Clear weather data area
+    tft.fillRect(
+        75,
+        WEATHER_Y,
+        405,
+        75,
+        COLOR_BG
+    );
+
+    // Weather icon
+    drawWeatherIcon();
+
+    tft.setTextColor(
+        TFT_WHITE,
+        COLOR_BG
+    );
+
+    tft.setTextFont(4);
+
+    // --------------------------------------------------------
+    // TEMPERATURE
+    // --------------------------------------------------------
+
+    char tempText[20];
+
+    snprintf(
+        tempText,
+        sizeof(tempText),
+        "Temp: %.1f C",
+        data.temperature
+    );
+    tft.setTextColor(TFT_ORANGE, COLOR_BG);
+    tft.setCursor(
+        85,
+        WEATHER_Y + 8
+    );
+
+    tft.print(tempText);
+
+    // --------------------------------------------------------
+    // HUMIDITY
+    // --------------------------------------------------------
+
+    char humidityText[20];
+
+    snprintf(
+        humidityText,
+        sizeof(humidityText),
+        "Lag: %.0f%%",
+        data.humidity
+    );
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+
+    tft.setCursor(
+        85,
+        WEATHER_Y + 40
+    );
+
+    tft.print(humidityText);
+
+    // --------------------------------------------------------
+    // WIND
+    // --------------------------------------------------------
+
+    char windText[20];
+
+    snprintf(
+        windText,
+        sizeof(windText),
+        "Era: %.1f km/h",
+        data.windSpeed
+    );
+    tft.setTextColor(TFT_GREEN, COLOR_BG);
+
+    tft.setCursor(
+        285,
+        WEATHER_Y + 8
+    );
+
+    tft.print(windText);
+
+    // --------------------------------------------------------
+    // PRESSURE
+    // --------------------------------------------------------
+
+    char pressureText[20];
+
+    snprintf(
+        pressureText,
+        sizeof(pressureText),
+        "Pres: %.0fhPa",
+        data.pressure
+    );
+     tft.setTextColor(TFT_MAGENTA, COLOR_BG);
+    tft.setCursor(
+        285,
+        WEATHER_Y + 40
+    );
+
+    tft.print(pressureText);
+}
+// ============================================================
 // WEB SERVER
 // ============================================================
 
@@ -569,56 +921,60 @@ void setup()
 
         Serial.print("IP: ");
         Serial.println(WiFi.localIP());
-    webServer.begin();
+        webServer.setWeatherService(&weather);
+
+
+        webServer.begin();
+
         // ----------------------------------------------------
-       // NTP
-// ----------------------------------------------------
+        // NTP
+        // ----------------------------------------------------
 
-configTime(
-    7200,
-    0,
-    NTP_SERVER,
-    "time.nist.gov",
-    "time.google.com"
-);
-
-
-
-Serial.println("Waiting for NTP...");
-
-bool timeSynced = false;
-
-for (int i = 0; i < 30; i++)
-{
-    if (getLocalTime(&timeinfo, 1000))
-    {
-        Serial.println("Time synchronized");
-
-        Serial.printf(
-            "Current time: %02d:%02d:%02d\n",
-            timeinfo.tm_hour,
-            timeinfo.tm_min,
-            timeinfo.tm_sec
+        configTime(
+            7200,
+            0,
+            NTP_SERVER,
+            "time.nist.gov",
+            "time.google.com"
         );
 
-        timeSynced = true;
-        break;
+        Serial.println("Waiting for NTP...");
+
+        bool timeSynced = false;
+
+        for (int i = 0; i < 30; i++)
+        {
+            if (getLocalTime(&timeinfo, 1000))
+            {
+                Serial.println("Time synchronized");
+
+                Serial.printf(
+                    "Current time: %02d:%02d:%02d\n",
+                    timeinfo.tm_hour,
+                    timeinfo.tm_min,
+                    timeinfo.tm_sec
+                );
+
+                timeSynced = true;
+                break;
+            }
+
+            Serial.print(".");
+        }
+
+        Serial.println();
+
+        if (!timeSynced)
+        {
+            Serial.println("NTP failed");
+        }
+        weather.update();
+        lastWeatherUpdate = millis();
     }
-
-    Serial.print(".");
-}
-
-Serial.println();
-
-if (!timeSynced)
-{
-    Serial.println("NTP failed");
-}
-}
-else
-{
-    Serial.println("WiFi connection failed");
-}
+    else
+    {
+        Serial.println("WiFi connection failed");
+    }
 
     // --------------------------------------------------------
     // INITIAL DISPLAY
@@ -630,8 +986,6 @@ else
 
     updateWiFiIndicator();
 
-    
-
     if (getLocalTime(&timeinfo, 2000))
     {
         updateClock(timeinfo);
@@ -640,6 +994,7 @@ else
     }
 
     drawWeather();
+    updateWeatherDisplay();
 }
 
 // ============================================================
@@ -651,8 +1006,6 @@ void loop()
     // --------------------------------------------------------
     // CLOCK
     // --------------------------------------------------------
-
-   
 
     if (getLocalTime(&timeinfo, 1000))
     {
@@ -677,7 +1030,19 @@ void loop()
     // --------------------------------------------------------
 
     updateWiFiIndicator();
-    webServer.handleClient();
-    }
+    if (millis() - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)
+{
+    lastWeatherUpdate = millis();
 
-    
+    if (weather.update())
+    {
+        updateWeatherDisplay();
+    }
+}
+   
+    // --------------------------------------------------------
+    // WEB SERVER
+    // --------------------------------------------------------
+
+    webServer.handleClient();
+}
