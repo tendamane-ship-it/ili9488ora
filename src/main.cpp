@@ -5,7 +5,9 @@
 #include "WeatherService.h"
 #include <TFT_eSPI.h>
 #include <time.h>
-
+#include <Wire.h>
+#include <Adafruit_BME680.h>
+#include <BH1750.h>
 // ============================================================
 // WIFI
 // ============================================================
@@ -23,6 +25,24 @@ TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
 WebServerManager webServer;
 WeatherService weather;
+Adafruit_BME680 bme;
+bool bme680OK = false;
+BH1750 lightMeter;
+bool bh1750OK = false;
+float bmeTemp = 0.0;
+float bmeHumidity = 0.0;
+float bmePressure = 0.0;
+float bmeGas = 0.0;
+float bh1750Lux = 0.0;
+float airBaseline = 0.0;
+bool airBaselineReady = false;
+
+float airBaselineSum = 0.0;
+int airBaselineCount = 0;
+
+const int AIR_BASELINE_SAMPLES = 30;
+unsigned long lastSensorRead = 0;
+const unsigned long SENSOR_READ_INTERVAL = 5000;
 
 // ============================================================
 // COLORS
@@ -34,30 +54,53 @@ WeatherService weather;
 #define COLOR_WIFI  TFT_GREEN
 
 // Emrat e diteve ne shqip
+
 const char* days[] = {
-    "e diel",
-    "e hene",
-    "e marte",
-    "e merkure",
-    "e enjte",
-    "e premte",
-    "e shtune"
+
+    "E diel",
+
+    "E hene",
+
+    "E marte",
+
+    "E merkure",
+
+    "E enjte",
+
+    "E premte",
+
+    "E shtune"
+
 };
 
 // Emrat e muajve ne shqip
+
 const char* months[] = {
-    "janar",
-    "shkurt",
-    "mars",
-    "prill",
-    "maj",
-    "qershor",
-    "korrik",
-    "gusht",
-    "shtator",
-    "tetor",
-    "nentor",
-    "dhjetor"
+
+    "Janar",
+
+    "Shkurt",
+
+    "Mars",
+
+    "Prill",
+
+    "Maj",
+
+    "Qershor",
+
+    "Korrik",
+
+    "Gusht",
+
+    "Shtator",
+
+    "Tetor",
+
+    "Nentor",
+
+    "Dhjetor"
+
 };
 
 #define DIGIT_W       84
@@ -388,7 +431,7 @@ void updateDate(struct tm& timeinfo)
     );
 
     tft.setTextColor(
-        COLOR_DATE,
+        COLOR_TIME,
         COLOR_BG
     );
 
@@ -398,7 +441,7 @@ void updateDate(struct tm& timeinfo)
 
     tft.setCursor(
         (480 - textWidth) / 2,
-        200
+        187
     );
 
     tft.print(dateText);
@@ -451,6 +494,14 @@ void updateWiFiIndicator()
 
 #define WEATHER_Y 245
 #define WEATHER_UPDATE_INTERVAL 300000UL
+// ============================================================
+    // LOWER PANEL SLIDE
+    // ============================================================
+
+     #define LOWER_PANEL_INTERVAL 10000UL   // 10 sekonda
+
+     bool showingLocalSensors = false;
+     unsigned long lastLowerPanelChange = 0;
 
 unsigned long lastWeatherUpdate = 0;
 // ============================================================
@@ -843,9 +894,162 @@ void updateWeatherDisplay()
     tft.print(pressureText);
 }
 // ============================================================
-// WEB SERVER
+// LOCAL SENSORS DISPLAY
+// ============================================================
+void updateLocalSensorsDisplay()
+{
+    tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
+
+    tft.setTextFont(2);
+
+    // Titulli
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.setCursor(75, WEATHER_Y);
+    tft.print("Sensoret lokale");
+
+    tft.setTextFont(4);
+
+    // Temperature
+    tft.setTextColor(TFT_ORANGE, COLOR_BG);
+    tft.setCursor(85, WEATHER_Y + 25);
+
+    if (bme680OK)
+    {
+        tft.print("Temp: ");
+        tft.print(bmeTemp, 1);
+        tft.print(" C");
+    }
+    else
+    {
+        tft.print("TEMP: --.- C");
+    }
+
+    // Humidity
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.setCursor(285, WEATHER_Y + 25);
+
+    if (bme680OK)
+    {
+        tft.print("Lag: ");
+        tft.print(bmeHumidity, 0);
+        tft.print(" %");
+    }
+    else
+    {
+        tft.print("Lag: -- %");
+    }
+
+    // Lux
+    tft.setTextColor(TFT_YELLOW, COLOR_BG);
+    tft.setCursor(85, WEATHER_Y + 52);
+
+    if (bh1750OK)
+    {
+        tft.print("LUX: ");
+        tft.print(bh1750Lux, 0);
+    }
+    else
+    {
+        tft.print("LUX: ----");
+    }
+
+    // Air quality
+    tft.setTextColor(TFT_GREEN, COLOR_BG);
+    tft.setCursor(285, WEATHER_Y + 52);
+
+    if (bme680OK)
+    {
+        if (!airBaselineReady)
+        {
+            tft.print("AIR: CAL...");
+        }
+        else
+        {
+            float ratio = bmeGas / airBaseline;
+
+            if (ratio >= 0.80)
+            {
+                tft.print("AIR: GOOD");
+            }
+            else if (ratio >= 0.50)
+            {
+                tft.print("AIR: FAIR");
+            }
+            else
+            {
+                tft.print("AIR: POOR");
+            }
+        }
+    }
+    else
+    {
+        tft.print("Ajer: --");
+    }
+}
+// ============================================================
+// LOWER PANEL SLIDE
 // ============================================================
 
+void updateLowerPanel()
+{
+    if (millis() - lastLowerPanelChange < LOWER_PANEL_INTERVAL)
+        return;
+
+    lastLowerPanelChange = millis();
+
+    showingLocalSensors = !showingLocalSensors;
+
+    if (showingLocalSensors)
+    {
+        updateLocalSensorsDisplay();
+    }
+    else
+    {
+        updateWeatherDisplay();
+    }
+}
+void updateAirQuality();
+void updateLocalSensors()
+{
+    if (bme680OK)
+    {
+        if (bme.performReading())
+        {
+            bmeTemp = bme.temperature;
+            bmeHumidity = bme.humidity;
+            bmePressure = bme.pressure / 100.0;
+            bmeGas = bme.gas_resistance / 1000.0;
+        }
+    }
+
+    if (bh1750OK)
+    {
+        bh1750Lux = lightMeter.readLightLevel();
+    }
+    updateAirQuality();
+}
+void updateAirQuality()
+{
+    if (!bme680OK || bmeGas <= 0)
+        return;
+
+    // Mbledhim 30 matje për baseline
+    if (!airBaselineReady)
+    {
+        airBaselineSum += bmeGas;
+        airBaselineCount++;
+
+        if (airBaselineCount >= AIR_BASELINE_SAMPLES)
+        {
+            airBaseline = airBaselineSum / AIR_BASELINE_SAMPLES;
+            airBaselineReady = true;
+
+            Serial.print("Air baseline: ");
+            Serial.print(airBaseline, 2);
+            Serial.println(" kOhm");
+        }
+    }
+}
 // ============================================================
 // SETUP
 // ============================================================
@@ -855,7 +1059,84 @@ void setup()
     Serial.begin(115200);
 
     delay(1000);
+   
 
+    // --------------------------------------------------------
+// BME680
+// --------------------------------------------------------
+
+Wire.begin(8, 9);
+
+if (bme.begin(0x76))
+{
+    bme680OK = true;
+    Serial.println("BME680 found at 0x76");
+}
+else if (bme.begin(0x77))
+{
+    bme680OK = true;
+    Serial.println("BME680 found at 0x77");
+}
+else
+{
+    Serial.println("BME680 NOT FOUND");
+}
+// --------------------------------------------------------
+// BH1750
+// --------------------------------------------------------
+
+if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
+{
+    bh1750OK = true;
+    Serial.println("BH1750 found at 0x23");
+}
+else
+{
+    Serial.println("BH1750 NOT FOUND");
+}
+
+
+if (bme680OK)
+{
+    if (bme.performReading())
+    {
+        bmeTemp = bme.temperature;
+        bmeHumidity = bme.humidity;
+        bmePressure = bme.pressure / 100.0;
+        bmeGas = bme.gas_resistance / 1000.0;
+
+        Serial.print("BME680 Temperature: ");
+        Serial.print(bmeTemp);
+        Serial.println(" C");
+
+        Serial.print("BME680 Humidity: ");
+        Serial.print(bmeHumidity);
+        Serial.println(" %");
+
+        Serial.print("BME680 Pressure: ");
+        Serial.print(bmePressure);
+        Serial.println(" hPa");
+
+        Serial.print("BME680 Gas: ");
+        Serial.print(bmeGas);
+        Serial.println(" kOhm");
+    }
+    else
+    {
+        Serial.println("BME680 reading FAILED");
+    }
+}
+
+if (bh1750OK)
+{
+    bh1750Lux = lightMeter.readLightLevel();
+
+    Serial.print("BH1750 Lux: ");
+    Serial.print(bh1750Lux);
+    Serial.println(" lx");
+}
+
+Serial.println("========================");
     Serial.println();
     Serial.println("==============================");
     Serial.println("ILI9488 CLOCK");
@@ -995,6 +1276,7 @@ void setup()
 
     drawWeather();
     updateWeatherDisplay();
+    lastLowerPanelChange = millis();
 }
 
 // ============================================================
@@ -1023,6 +1305,17 @@ void loop()
 
             drawColon(visible);
         }
+        if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
+{
+    lastSensorRead = millis();
+
+    updateLocalSensors();
+
+    if (showingLocalSensors)
+    {
+        updateLocalSensorsDisplay();
+    }
+}
     }
 
     // --------------------------------------------------------
@@ -1039,6 +1332,11 @@ void loop()
         updateWeatherDisplay();
     }
 }
+    // --------------------------------------------------------
+// LOWER PANEL SLIDE
+// --------------------------------------------------------
+
+updateLowerPanel();
    
     // --------------------------------------------------------
     // WEB SERVER
