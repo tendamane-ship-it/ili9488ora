@@ -52,5 +52,24 @@ extern const unsigned long SENSOR_READ_INTERVAL;
 void initSensors();
 void updateLocalSensors();
 void updateAirQuality();
+// ------------------------------------------------------------
+// PIR
+// ------------------------------------------------------------
+
+#define PIR_PIN 5
+
+extern bool pirLastState;
+
+extern unsigned long pirIgnoreUntil;
+
+extern int pirStableState;
+extern int pirCandidateState;
+
+extern unsigned long pirStateChangeTime;
+
+extern const unsigned long PIR_DEBOUNCE_TIME;
+
+void initPIR();
+int readPIR();
 
 #endif

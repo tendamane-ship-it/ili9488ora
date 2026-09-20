@@ -184,3 +184,52 @@ void updateAirQuality()
         }
     }
 }
+
+// ------------------------------------------------------------
+// PIR
+// ------------------------------------------------------------
+
+bool pirLastState = LOW;
+
+unsigned long pirIgnoreUntil = 0;
+
+int pirStableState = LOW;
+int pirCandidateState = LOW;
+
+unsigned long pirStateChangeTime = 0;
+
+const unsigned long PIR_DEBOUNCE_TIME = 150;
+
+// ------------------------------------------------------------
+// INITIALIZE PIR
+// ------------------------------------------------------------
+
+void initPIR()
+{
+    pinMode(PIR_PIN, INPUT);
+
+    Serial.println("PIR initialized on GPIO 5");
+}
+
+// ------------------------------------------------------------
+// READ PIR
+// ------------------------------------------------------------
+
+int readPIR()
+{
+    int pirState = digitalRead(PIR_PIN);
+
+    if (pirState != pirCandidateState)
+    {
+        pirCandidateState = pirState;
+        pirStateChangeTime = millis();
+    }
+
+    if (pirCandidateState != pirStableState &&
+        millis() - pirStateChangeTime >= PIR_DEBOUNCE_TIME)
+    {
+        pirStableState = pirCandidateState;
+    }
+
+    return pirStableState;
+}

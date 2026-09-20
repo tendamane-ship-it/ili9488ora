@@ -40,15 +40,7 @@ WeatherService weather;
 #define COLOR_DATE  TFT_WHITE
 #define COLOR_WIFI  TFT_GREEN
 
-#define PIR_PIN 5
 unsigned long lastMotionTime = 0;
-bool pirLastState = LOW;
-unsigned long pirIgnoreUntil = 0;
-int pirStableState = LOW;
-int pirCandidateState = LOW;
-unsigned long pirStateChangeTime = 0;
-
-const unsigned long PIR_DEBOUNCE_TIME = 150;
 
 const unsigned long WELCOME_DELAY = 30UL * 60UL * 1000UL;
 
@@ -1087,7 +1079,7 @@ void setup()
 
     delay(1000);
    
-    pinMode(PIR_PIN, INPUT);
+    initPIR();
 lastMotionTime = millis();
 // --------------------------------------------------------
 // SENSORS
@@ -1246,148 +1238,84 @@ Serial.println("========================");
 
 void loop()
 {
-    // --------------------------------------------------------
-    // PIR / MOTION
-    // --------------------------------------------------------
 // --------------------------------------------------------
 // PIR / MOTION
 // --------------------------------------------------------
 
-int pirState = digitalRead(PIR_PIN);
+int pirState = readPIR();
 
-if (pirState != pirCandidateState)
-{
-    pirCandidateState = pirState;
-    pirStateChangeTime = millis();
-}
 // --------------------------------------------------------
-// WAKE SCREEN SAVER DIRECTLY FROM PIR
+// SCREEN SAVER WAKE
 // --------------------------------------------------------
 
-static unsigned long pirHighStart = 0;
-
-if (screenSaverActive)
+if (screenSaverActive && pirState == HIGH)
 {
-    if (pirState == HIGH)
+    unsigned long now = millis();
+
+    screenSaverActive = false;
+
+    Serial.println("PIR: MOTION DETECTED");
+    Serial.println("SCREEN SAVER: WAKE");
+
+    // Injoro PIR per 2 sekonda pas wake
+    pirIgnoreUntil = millis() + 2000;
+
+    // Pastro ekranin
+    tft.fillScreen(COLOR_BG);
+
+    // Detyro ridizenjimin e shifrave
+    lastDigits[0] = -1;
+    lastDigits[1] = -1;
+    lastDigits[2] = -1;
+    lastDigits[3] = -1;
+
+    // Rifresko oren dhe daten
+    if (getLocalTime(&timeinfo, 1000))
     {
-        if (pirHighStart == 0)
-        {
-            pirHighStart = millis();
-        }
+        updateClock(timeinfo);
+        updateDate(timeinfo);
 
-        if (millis() - pirHighStart >= PIR_DEBOUNCE_TIME)
-        {
-            unsigned long now = millis();
-
-            screenSaverActive = false;
-
-            Serial.println("PIR: MOTION DETECTED");
-            Serial.println("SCREEN SAVER: WAKE");
-
-            pirIgnoreUntil = millis() + 2000;
-
-            tft.fillScreen(COLOR_BG);
-
-            lastDigits[0] = -1;
-            lastDigits[1] = -1;
-            lastDigits[2] = -1;
-            lastDigits[3] = -1;
-
-            if (getLocalTime(&timeinfo, 1000))
-            {
-                updateClock(timeinfo);
-                updateDate(timeinfo);
-
-                bool visible = (timeinfo.tm_sec % 2 == 0);
-                drawColon(visible);
-            }
-
-            updateWiFiIndicator();
-            updateLowerPanel();
-
-            lastMotionTime = now;
-
-            pirStableState = HIGH;
-            pirCandidateState = HIGH;
-
-            pirHighStart = 0;
-
-            return;
-        }
+        bool visible = (timeinfo.tm_sec % 2 == 0);
+        drawColon(visible);
     }
-    else
+
+    // Rifresko elementet e ekranit
+    updateWiFiIndicator();
+    updateLowerPanel();
+
+    lastMotionTime = now;
+
+    // Mos e konsidero kete HIGH si nje levizje te re
+    pirLastState = HIGH;
+
+    return;
+}
+
+// --------------------------------------------------------
+// NORMAL PIR MOTION
+// --------------------------------------------------------
+
+if (!screenSaverActive &&
+    pirState == HIGH &&
+    pirLastState == LOW)
+{
+    unsigned long now = millis();
+
+    Serial.println("PIR: MOTION DETECTED");
+
+    if (millis() >= pirIgnoreUntil)
     {
-        pirHighStart = 0;
+        if (now - lastMotionTime >= WELCOME_DELAY)
+        {
+            Serial.println("PIR: WELCOME EVENT");
+        }
+
+        lastMotionTime = now;
     }
 }
-if (pirCandidateState != pirStableState &&
-    millis() - pirStateChangeTime >= PIR_DEBOUNCE_TIME)
-{
-    pirStableState = pirCandidateState;
 
-    // PIR u be HIGH ne menyre te qendrueshme
-    if (pirStableState == HIGH)
-    {
-        unsigned long now = millis();
-
-        Serial.println("PIR: MOTION DETECTED");
-
-        if (screenSaverActive)
-        {
-            screenSaverActive = false;
-
-            Serial.println("SCREEN SAVER: WAKE");
-
-            // Injoro PIR per 2 sekonda pas wake
-            pirIgnoreUntil = millis() + 2000;
-
-            // Pastro ekranin
-            tft.fillScreen(COLOR_BG);
-
-            // Detyro ridizenjimin e shifrave
-            lastDigits[0] = -1;
-            lastDigits[1] = -1;
-            lastDigits[2] = -1;
-            lastDigits[3] = -1;
-
-            // Rifresko oren dhe daten
-            if (getLocalTime(&timeinfo, 1000))
-            {
-                updateClock(timeinfo);
-                updateDate(timeinfo);
-
-                bool visible = (timeinfo.tm_sec % 2 == 0);
-                drawColon(visible);
-            }
-
-            // Rifresko elementet e ekranit
-            updateWiFiIndicator();
-            updateLowerPanel();
-
-            // Koha e fundit e levizjes
-            lastMotionTime = now;
-
-            return;
-        }
-        else if (millis() >= pirIgnoreUntil)
-        {
-            if (now - lastMotionTime >= WELCOME_DELAY)
-            {
-                Serial.println("PIR: WELCOME EVENT");
-            }
-
-            lastMotionTime = now;
-        }
-    }
-    else
-    {
-        Serial.println("PIR: NO MOTION");
-    }
-}
-          
-       
-
-
+// Ruaj gjendjen aktuale
+pirLastState = pirState;
 
     // --------------------------------------------------------
     // SCREEN SAVER
@@ -1464,7 +1392,7 @@ if (pirCandidateState != pirStableState &&
 
         // ----------------------------------------------------
         // WEATHER
-        // ----------------------------------------------------
+        // --------------------------------------------------------
 
         if (millis() - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)
         {
@@ -1475,12 +1403,16 @@ if (pirCandidateState != pirStableState &&
                 updateWeatherDisplay();
             }
         }
- // ----------------------------------------------------
+
+
+        // ----------------------------------------------------
         // LOWER PANEL
         // ----------------------------------------------------
 
         updateLowerPanel();
     }
+
+
     // --------------------------------------------------------
     // WEB SERVER
     // --------------------------------------------------------
