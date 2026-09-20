@@ -46,10 +46,16 @@ const unsigned long WELCOME_DELAY = 30UL * 60UL * 1000UL;
 
 bool screenSaverActive = false;
 unsigned long screenSaverStart = 0;
+bool screenSaverPIRArmed = false;
 
 const unsigned long SCREEN_SAVER_DELAY = 20UL * 1000UL;
 const unsigned long HEART_INTERVAL = 1200UL;
+TFT_eSprite heartSprite = TFT_eSprite(&tft);
 
+bool heartSpriteReady = false;
+
+unsigned long lastHeartFrame = 0;
+float heartPhase = 0.0;
 // Emrat e diteve ne shqip
 
 const char* days[] = {
@@ -369,65 +375,191 @@ void updateScreenSaver()
     if (!screenSaverActive)
         return;
 
-    static unsigned long lastHeartUpdate = 0;
-    static bool heartBig = false;
+    // --------------------------------------------------------
+    // INITIALIZO SPRITE
+    // --------------------------------------------------------
 
-    if (millis() - lastHeartUpdate >= HEART_INTERVAL)
+    if (!heartSpriteReady)
     {
-        lastHeartUpdate = millis();
-        heartBig = !heartBig;
+        Serial.println("SCREEN SAVER: creating heart sprite...");
 
-        // Pastro ekranin komplet
-        tft.fillScreen(COLOR_BG);
+        heartSprite.setColorDepth(8);
 
-        int cx = 240;
-        int cy = 125;
+        if (heartSprite.createSprite(300, 200))
+        {
+            heartSpriteReady = true;
 
-        int size = heartBig ? 38 : 30;
+            Serial.println("SCREEN SAVER: heart sprite CREATED");
 
-        // Zemra grafike
-        tft.fillCircle(cx - size / 2, cy - size / 4, size / 2, TFT_CYAN);
-        tft.fillCircle(cx + size / 2, cy - size / 4, size / 2, TFT_CYAN);
+            heartPhase = 0.0;
+            lastHeartFrame = millis();
+        }
+        else
+        {
+            Serial.println("SCREEN SAVER: heart sprite FAILED");
+            return;
+        }
+    }
 
-        int points[6][2] = {
-            {cx - size,     cy - 5},
-            {cx + size,     cy - 5},
-            {cx,            cy + size + 25},
-            {cx - size / 2, cy + size / 3},
-            {cx,            cy + size / 2},
-            {cx + size / 2, cy + size / 3}
-        };
+    // --------------------------------------------------------
+    // ~30 FPS
+    // --------------------------------------------------------
 
-        tft.fillTriangle(
-            cx - size,
-            cy - 5,
-            cx + size,
-            cy - 5,
-            cx,
-            cy + size + 25,
-            TFT_CYAN
+    if (millis() - lastHeartFrame < 33)
+        return;
+
+    lastHeartFrame = millis();
+
+    // --------------------------------------------------------
+    // HEARTBEAT
+    // --------------------------------------------------------
+
+    heartPhase += 0.12;
+
+    float cycle = fmod(heartPhase, TWO_PI);
+
+    float pulse = 1.0;
+
+    // RRAHJA E PARE
+    if (cycle < 0.55)
+    {
+        float p = sin((cycle / 0.55) * PI);
+        pulse = 1.0 + 0.14 * p;
+    }
+
+    // RRAHJA E DYTE
+    else if (cycle >= 0.75 && cycle < 1.15)
+    {
+        float p = sin(
+            ((cycle - 0.75) / 0.40) * PI
         );
 
-        // ORA
-        tft.setTextDatum(MC_DATUM);
-        tft.setTextFont(2);
-        tft.setTextColor(TFT_WHITE, COLOR_BG);
-        tft.drawString("ORA", 240, 190);
+        pulse = 1.0 + 0.075 * p;
+    }
 
-        // Ora e vogël
-        if (getLocalTime(&timeinfo, 0))
+    // --------------------------------------------------------
+    // PASTRO VETEM SPRITE-IN
+    // --------------------------------------------------------
+
+    heartSprite.fillSprite(TFT_BLACK);
+
+    // --------------------------------------------------------
+    // PARAMETRIC HEART
+    // --------------------------------------------------------
+
+    const int cx = 150;
+    const int cy = 92;
+
+    float scale = 5.8 * pulse;
+
+    bool firstPoint = true;
+
+    int oldX = 0;
+    int oldY = 0;
+
+    for (float t = 0; t <= TWO_PI; t += 0.015)
+    {
+        float x =
+            16.0 *
+            sin(t) *
+            sin(t) *
+            sin(t);
+
+        float y =
+            13.0 * cos(t)
+            - 5.0 * cos(2.0 * t)
+            - 2.0 * cos(3.0 * t)
+            - cos(4.0 * t);
+
+        int px = cx + (int)(x * scale);
+        int py = cy - (int)(y * scale);
+
+        if (!firstPoint)
         {
-            char smallTime[6];
-            strftime(smallTime, sizeof(smallTime), "%H:%M", &timeinfo);
+          // --------------------------------------------------------
+// ZEMER - VIJE 7 PX
+// --------------------------------------------------------
 
-            tft.setTextColor(TFT_CYAN, COLOR_BG);
-            tft.drawString(smallTime, 240, 215);
+heartSprite.drawLine(
+    oldX, oldY,
+    px, py,
+    TFT_CYAN
+);
+
+heartSprite.drawLine(
+    oldX + 1, oldY,
+    px + 1, py,
+    TFT_CYAN
+);
+
+heartSprite.drawLine(
+    oldX - 1, oldY,
+    px - 1, py,
+    TFT_CYAN
+);
+
+heartSprite.drawLine(
+    oldX, oldY + 1,
+    px, py + 1,
+    TFT_CYAN
+);
+
+heartSprite.drawLine(
+    oldX, oldY - 1,
+    px, py - 1,
+    TFT_CYAN
+);
+
+heartSprite.drawLine(
+    oldX + 2, oldY + 1,
+    px + 2, py + 1,
+    TFT_CYAN
+);
+
+heartSprite.drawLine(
+    oldX - 2, oldY - 1,
+    px - 2, py - 1,
+    TFT_CYAN
+);
         }
 
-        tft.setTextDatum(TL_DATUM);
+        oldX = px;
+        oldY = py;
+
+        firstPoint = false;
     }
+
+    // --------------------------------------------------------
+    // MANE
+    // --------------------------------------------------------
+
+    heartSprite.setTextDatum(MC_DATUM);
+
+    heartSprite.setTextFont(4);
+
+    heartSprite.setTextColor(
+        TFT_WHITE,
+        TFT_BLACK
+    );
+
+    heartSprite.drawString(
+        "Mane",
+        150,
+        178
+    );
+
+    heartSprite.setTextDatum(TL_DATUM);
+
+    // --------------------------------------------------------
+    // SHFAQ SPRITE SI NJE BllOK TE VETEM
+    // --------------------------------------------------------
+
+    heartSprite.pushSprite(
+        90,
+        60
+    );
 }
-// ============================================================
+
 // CLOCK UPDATE
 // ============================================================
 
@@ -1243,54 +1375,58 @@ void loop()
 // --------------------------------------------------------
 
 int pirState = readPIR();
-
 // --------------------------------------------------------
 // SCREEN SAVER WAKE
 // --------------------------------------------------------
 
-if (screenSaverActive && pirState == HIGH)
+if (screenSaverActive)
 {
-    unsigned long now = millis();
-
-    screenSaverActive = false;
-
-    Serial.println("PIR: MOTION DETECTED");
-    Serial.println("SCREEN SAVER: WAKE");
-
-    // Injoro PIR per 2 sekonda pas wake
-    pirIgnoreUntil = millis() + 2000;
-
-    // Pastro ekranin
-    tft.fillScreen(COLOR_BG);
-
-    // Detyro ridizenjimin e shifrave
-    lastDigits[0] = -1;
-    lastDigits[1] = -1;
-    lastDigits[2] = -1;
-    lastDigits[3] = -1;
-
-    // Rifresko oren dhe daten
-    if (getLocalTime(&timeinfo, 1000))
+    // Fillimisht presim që PIR të kthehet LOW.
+    // Kjo shmang wake të menjëhershëm kur screensaver-i aktivizohet
+    // ndërkohë që PIR është ende HIGH.
+   if (screenSaverActive && pirState == HIGH)
     {
-        updateClock(timeinfo);
-        updateDate(timeinfo);
+        unsigned long now = millis();
 
-        bool visible = (timeinfo.tm_sec % 2 == 0);
-        drawColon(visible);
+        screenSaverActive = false;
+
+        Serial.println("PIR: MOTION DETECTED");
+        Serial.println("SCREEN SAVER: WAKE");
+
+        // Injoro PIR per 2 sekonda pas wake
+        pirIgnoreUntil = millis() + 2000;
+
+        // Pastro ekranin
+        tft.fillScreen(COLOR_BG);
+
+        // Detyro ridizenjimin e shifrave
+        lastDigits[0] = -1;
+        lastDigits[1] = -1;
+        lastDigits[2] = -1;
+        lastDigits[3] = -1;
+
+        // Rifresko oren dhe daten
+        if (getLocalTime(&timeinfo, 1000))
+        {
+            updateClock(timeinfo);
+            updateDate(timeinfo);
+
+            bool visible = (timeinfo.tm_sec % 2 == 0);
+            drawColon(visible);
+        }
+
+        // Rifresko elementet e ekranit
+        updateWiFiIndicator();
+        updateLowerPanel();
+
+        lastMotionTime = now;
+
+        // Mos e konsidero kete HIGH si nje levizje te re
+        pirLastState = HIGH;
+
+        return;
     }
-
-    // Rifresko elementet e ekranit
-    updateWiFiIndicator();
-    updateLowerPanel();
-
-    lastMotionTime = now;
-
-    // Mos e konsidero kete HIGH si nje levizje te re
-    pirLastState = HIGH;
-
-    return;
 }
-
 // --------------------------------------------------------
 // NORMAL PIR MOTION
 // --------------------------------------------------------
@@ -1326,6 +1462,7 @@ pirLastState = pirState;
     {
         screenSaverActive = true;
         screenSaverStart = millis();
+        screenSaverPIRArmed = false;
 
         Serial.println("SCREEN SAVER: ACTIVE");
 
