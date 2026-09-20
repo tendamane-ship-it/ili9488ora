@@ -1,13 +1,19 @@
 #include <Arduino.h>
+
 #include <WiFi.h>
+
 #include "WebServerManager.h"
+
 #include "Pages.h"
+
 #include "WeatherService.h"
+
+#include "Sensors.h"
+
 #include <TFT_eSPI.h>
+
 #include <time.h>
-#include <Wire.h>
-#include <Adafruit_BME680.h>
-#include <BH1750.h>
+
 // ============================================================
 // WIFI
 // ============================================================
@@ -25,25 +31,6 @@ TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
 WebServerManager webServer;
 WeatherService weather;
-Adafruit_BME680 bme;
-bool bme680OK = false;
-BH1750 lightMeter;
-bool bh1750OK = false;
-float bmeTemp = 0.0;
-float bmeHumidity = 0.0;
-float bmePressure = 0.0;
-float bmeGas = 0.0;
-float bh1750Lux = 0.0;
-float airBaseline = 0.0;
-bool airBaselineReady = false;
-
-float airBaselineSum = 0.0;
-int airBaselineCount = 0;
-
-const int AIR_BASELINE_SAMPLES = 30;
-unsigned long lastSensorRead = 0;
-const unsigned long SENSOR_READ_INTERVAL = 5000;
-
 // ============================================================
 // COLORS
 // ============================================================
@@ -52,6 +39,24 @@ const unsigned long SENSOR_READ_INTERVAL = 5000;
 #define COLOR_TIME  TFT_CYAN
 #define COLOR_DATE  TFT_WHITE
 #define COLOR_WIFI  TFT_GREEN
+
+#define PIR_PIN 5
+unsigned long lastMotionTime = 0;
+bool pirLastState = LOW;
+unsigned long pirIgnoreUntil = 0;
+int pirStableState = LOW;
+int pirCandidateState = LOW;
+unsigned long pirStateChangeTime = 0;
+
+const unsigned long PIR_DEBOUNCE_TIME = 150;
+
+const unsigned long WELCOME_DELAY = 30UL * 60UL * 1000UL;
+
+bool screenSaverActive = false;
+unsigned long screenSaverStart = 0;
+
+const unsigned long SCREEN_SAVER_DELAY = 20UL * 1000UL;
+const unsigned long HEART_INTERVAL = 1200UL;
 
 // Emrat e diteve ne shqip
 
@@ -367,7 +372,69 @@ void drawColon(bool visible)
         COLOR_TIME
     );
 }
+void updateScreenSaver()
+{
+    if (!screenSaverActive)
+        return;
 
+    static unsigned long lastHeartUpdate = 0;
+    static bool heartBig = false;
+
+    if (millis() - lastHeartUpdate >= HEART_INTERVAL)
+    {
+        lastHeartUpdate = millis();
+        heartBig = !heartBig;
+
+        // Pastro ekranin komplet
+        tft.fillScreen(COLOR_BG);
+
+        int cx = 240;
+        int cy = 125;
+
+        int size = heartBig ? 38 : 30;
+
+        // Zemra grafike
+        tft.fillCircle(cx - size / 2, cy - size / 4, size / 2, TFT_CYAN);
+        tft.fillCircle(cx + size / 2, cy - size / 4, size / 2, TFT_CYAN);
+
+        int points[6][2] = {
+            {cx - size,     cy - 5},
+            {cx + size,     cy - 5},
+            {cx,            cy + size + 25},
+            {cx - size / 2, cy + size / 3},
+            {cx,            cy + size / 2},
+            {cx + size / 2, cy + size / 3}
+        };
+
+        tft.fillTriangle(
+            cx - size,
+            cy - 5,
+            cx + size,
+            cy - 5,
+            cx,
+            cy + size + 25,
+            TFT_CYAN
+        );
+
+        // ORA
+        tft.setTextDatum(MC_DATUM);
+        tft.setTextFont(2);
+        tft.setTextColor(TFT_WHITE, COLOR_BG);
+        tft.drawString("ORA", 240, 190);
+
+        // Ora e vogël
+        if (getLocalTime(&timeinfo, 0))
+        {
+            char smallTime[6];
+            strftime(smallTime, sizeof(smallTime), "%H:%M", &timeinfo);
+
+            tft.setTextColor(TFT_CYAN, COLOR_BG);
+            tft.drawString(smallTime, 240, 215);
+        }
+
+        tft.setTextDatum(TL_DATUM);
+    }
+}
 // ============================================================
 // CLOCK UPDATE
 // ============================================================
@@ -1008,48 +1075,8 @@ void updateLowerPanel()
         updateWeatherDisplay();
     }
 }
-void updateAirQuality();
-void updateLocalSensors()
-{
-    if (bme680OK)
-    {
-        if (bme.performReading())
-        {
-            bmeTemp = bme.temperature;
-            bmeHumidity = bme.humidity;
-            bmePressure = bme.pressure / 100.0;
-            bmeGas = bme.gas_resistance / 1000.0;
-        }
-    }
 
-    if (bh1750OK)
-    {
-        bh1750Lux = lightMeter.readLightLevel();
-    }
-    updateAirQuality();
-}
-void updateAirQuality()
-{
-    if (!bme680OK || bmeGas <= 0)
-        return;
 
-    // Mbledhim 30 matje për baseline
-    if (!airBaselineReady)
-    {
-        airBaselineSum += bmeGas;
-        airBaselineCount++;
-
-        if (airBaselineCount >= AIR_BASELINE_SAMPLES)
-        {
-            airBaseline = airBaselineSum / AIR_BASELINE_SAMPLES;
-            airBaselineReady = true;
-
-            Serial.print("Air baseline: ");
-            Serial.print(airBaseline, 2);
-            Serial.println(" kOhm");
-        }
-    }
-}
 // ============================================================
 // SETUP
 // ============================================================
@@ -1060,81 +1087,13 @@ void setup()
 
     delay(1000);
    
-
-    // --------------------------------------------------------
-// BME680
+    pinMode(PIR_PIN, INPUT);
+lastMotionTime = millis();
+// --------------------------------------------------------
+// SENSORS
 // --------------------------------------------------------
 
-Wire.begin(8, 9);
-
-if (bme.begin(0x76))
-{
-    bme680OK = true;
-    Serial.println("BME680 found at 0x76");
-}
-else if (bme.begin(0x77))
-{
-    bme680OK = true;
-    Serial.println("BME680 found at 0x77");
-}
-else
-{
-    Serial.println("BME680 NOT FOUND");
-}
-// --------------------------------------------------------
-// BH1750
-// --------------------------------------------------------
-
-if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE))
-{
-    bh1750OK = true;
-    Serial.println("BH1750 found at 0x23");
-}
-else
-{
-    Serial.println("BH1750 NOT FOUND");
-}
-
-
-if (bme680OK)
-{
-    if (bme.performReading())
-    {
-        bmeTemp = bme.temperature;
-        bmeHumidity = bme.humidity;
-        bmePressure = bme.pressure / 100.0;
-        bmeGas = bme.gas_resistance / 1000.0;
-
-        Serial.print("BME680 Temperature: ");
-        Serial.print(bmeTemp);
-        Serial.println(" C");
-
-        Serial.print("BME680 Humidity: ");
-        Serial.print(bmeHumidity);
-        Serial.println(" %");
-
-        Serial.print("BME680 Pressure: ");
-        Serial.print(bmePressure);
-        Serial.println(" hPa");
-
-        Serial.print("BME680 Gas: ");
-        Serial.print(bmeGas);
-        Serial.println(" kOhm");
-    }
-    else
-    {
-        Serial.println("BME680 reading FAILED");
-    }
-}
-
-if (bh1750OK)
-{
-    bh1750Lux = lightMeter.readLightLevel();
-
-    Serial.print("BH1750 Lux: ");
-    Serial.print(bh1750Lux);
-    Serial.println(" lx");
-}
+initSensors();
 
 Serial.println("========================");
     Serial.println();
@@ -1265,7 +1224,10 @@ Serial.println("========================");
 
     lastWiFiState = false;
 
+    if (!screenSaverActive)
+{
     updateWiFiIndicator();
+}
 
     if (getLocalTime(&timeinfo, 2000))
     {
@@ -1278,7 +1240,6 @@ Serial.println("========================");
     updateWeatherDisplay();
     lastLowerPanelChange = millis();
 }
-
 // ============================================================
 // LOOP
 // ============================================================
@@ -1286,58 +1247,240 @@ Serial.println("========================");
 void loop()
 {
     // --------------------------------------------------------
-    // CLOCK
+    // PIR / MOTION
     // --------------------------------------------------------
-
-    if (getLocalTime(&timeinfo, 1000))
-    {
-        updateClock(timeinfo);
-        updateDate(timeinfo);
-
-        static int lastSecond = -1;
-
-        if (timeinfo.tm_sec != lastSecond)
-        {
-            lastSecond = timeinfo.tm_sec;
-
-            bool visible =
-                (timeinfo.tm_sec % 2 == 0);
-
-            drawColon(visible);
-        }
-        if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
-{
-    lastSensorRead = millis();
-
-    updateLocalSensors();
-
-    if (showingLocalSensors)
-    {
-        updateLocalSensorsDisplay();
-    }
-}
-    }
-
-    // --------------------------------------------------------
-    // WIFI INDICATOR
-    // --------------------------------------------------------
-
-    updateWiFiIndicator();
-    if (millis() - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)
-{
-    lastWeatherUpdate = millis();
-
-    if (weather.update())
-    {
-        updateWeatherDisplay();
-    }
-}
-    // --------------------------------------------------------
-// LOWER PANEL SLIDE
+// --------------------------------------------------------
+// PIR / MOTION
 // --------------------------------------------------------
 
-updateLowerPanel();
-   
+int pirState = digitalRead(PIR_PIN);
+
+if (pirState != pirCandidateState)
+{
+    pirCandidateState = pirState;
+    pirStateChangeTime = millis();
+}
+// --------------------------------------------------------
+// WAKE SCREEN SAVER DIRECTLY FROM PIR
+// --------------------------------------------------------
+
+static unsigned long pirHighStart = 0;
+
+if (screenSaverActive)
+{
+    if (pirState == HIGH)
+    {
+        if (pirHighStart == 0)
+        {
+            pirHighStart = millis();
+        }
+
+        if (millis() - pirHighStart >= PIR_DEBOUNCE_TIME)
+        {
+            unsigned long now = millis();
+
+            screenSaverActive = false;
+
+            Serial.println("PIR: MOTION DETECTED");
+            Serial.println("SCREEN SAVER: WAKE");
+
+            pirIgnoreUntil = millis() + 2000;
+
+            tft.fillScreen(COLOR_BG);
+
+            lastDigits[0] = -1;
+            lastDigits[1] = -1;
+            lastDigits[2] = -1;
+            lastDigits[3] = -1;
+
+            if (getLocalTime(&timeinfo, 1000))
+            {
+                updateClock(timeinfo);
+                updateDate(timeinfo);
+
+                bool visible = (timeinfo.tm_sec % 2 == 0);
+                drawColon(visible);
+            }
+
+            updateWiFiIndicator();
+            updateLowerPanel();
+
+            lastMotionTime = now;
+
+            pirStableState = HIGH;
+            pirCandidateState = HIGH;
+
+            pirHighStart = 0;
+
+            return;
+        }
+    }
+    else
+    {
+        pirHighStart = 0;
+    }
+}
+if (pirCandidateState != pirStableState &&
+    millis() - pirStateChangeTime >= PIR_DEBOUNCE_TIME)
+{
+    pirStableState = pirCandidateState;
+
+    // PIR u be HIGH ne menyre te qendrueshme
+    if (pirStableState == HIGH)
+    {
+        unsigned long now = millis();
+
+        Serial.println("PIR: MOTION DETECTED");
+
+        if (screenSaverActive)
+        {
+            screenSaverActive = false;
+
+            Serial.println("SCREEN SAVER: WAKE");
+
+            // Injoro PIR per 2 sekonda pas wake
+            pirIgnoreUntil = millis() + 2000;
+
+            // Pastro ekranin
+            tft.fillScreen(COLOR_BG);
+
+            // Detyro ridizenjimin e shifrave
+            lastDigits[0] = -1;
+            lastDigits[1] = -1;
+            lastDigits[2] = -1;
+            lastDigits[3] = -1;
+
+            // Rifresko oren dhe daten
+            if (getLocalTime(&timeinfo, 1000))
+            {
+                updateClock(timeinfo);
+                updateDate(timeinfo);
+
+                bool visible = (timeinfo.tm_sec % 2 == 0);
+                drawColon(visible);
+            }
+
+            // Rifresko elementet e ekranit
+            updateWiFiIndicator();
+            updateLowerPanel();
+
+            // Koha e fundit e levizjes
+            lastMotionTime = now;
+
+            return;
+        }
+        else if (millis() >= pirIgnoreUntil)
+        {
+            if (now - lastMotionTime >= WELCOME_DELAY)
+            {
+                Serial.println("PIR: WELCOME EVENT");
+            }
+
+            lastMotionTime = now;
+        }
+    }
+    else
+    {
+        Serial.println("PIR: NO MOTION");
+    }
+}
+          
+       
+
+
+
+    // --------------------------------------------------------
+    // SCREEN SAVER
+    // --------------------------------------------------------
+
+    if (!screenSaverActive &&
+        millis() - lastMotionTime >= SCREEN_SAVER_DELAY)
+    {
+        screenSaverActive = true;
+        screenSaverStart = millis();
+
+        Serial.println("SCREEN SAVER: ACTIVE");
+
+        tft.fillScreen(COLOR_BG);
+    }
+
+
+    // --------------------------------------------------------
+    // SCREEN SAVER ACTIVE
+    // --------------------------------------------------------
+
+    if (screenSaverActive)
+    {
+        updateScreenSaver();
+    }
+    else
+    {
+        // ----------------------------------------------------
+        // CLOCK
+        // ----------------------------------------------------
+
+        if (getLocalTime(&timeinfo, 1000))
+        {
+            updateClock(timeinfo);
+            updateDate(timeinfo);
+
+            static int lastSecond = -1;
+
+            if (timeinfo.tm_sec != lastSecond)
+            {
+                lastSecond = timeinfo.tm_sec;
+
+                bool visible =
+                    (timeinfo.tm_sec % 2 == 0);
+
+                drawColon(visible);
+            }
+        }
+
+
+        // ----------------------------------------------------
+        // LOCAL SENSORS
+        // ----------------------------------------------------
+
+        if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
+        {
+            lastSensorRead = millis();
+
+            updateLocalSensors();
+
+            if (showingLocalSensors)
+            {
+                updateLocalSensorsDisplay();
+            }
+        }
+
+
+        // ----------------------------------------------------
+        // WIFI INDICATOR
+        // ----------------------------------------------------
+
+        updateWiFiIndicator();
+
+
+        // ----------------------------------------------------
+        // WEATHER
+        // ----------------------------------------------------
+
+        if (millis() - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)
+        {
+            lastWeatherUpdate = millis();
+
+            if (weather.update())
+            {
+                updateWeatherDisplay();
+            }
+        }
+ // ----------------------------------------------------
+        // LOWER PANEL
+        // ----------------------------------------------------
+
+        updateLowerPanel();
+    }
     // --------------------------------------------------------
     // WEB SERVER
     // --------------------------------------------------------
