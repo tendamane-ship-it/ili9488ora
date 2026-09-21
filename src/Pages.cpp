@@ -1,264 +1,296 @@
 #include "Pages.h"
 #include <WiFi.h>
 
+extern bool setting24Hour;
+extern bool settingDate;
+extern bool settingPIR;
+extern bool settingWeather;
+extern bool settingLightSensor;
+
+extern unsigned long localSensorsDisplayTime;
+extern unsigned long weatherDisplayTime;
 String getDashboardPage()
 {
     String html;
 
     html += "<!DOCTYPE html>";
-    html += "<html lang='en'>";
+    html += "<html>";
     html += "<head>";
 
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
     html += "<meta charset='UTF-8'>";
-    html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    html += "<title>ORA e Lapit  Dashboard</title>";
 
-    html += "<title>ORA Dashboard</title>";
+    // ============================================================
+    // STYLE
+    // ============================================================
 
     html += "<style>";
-
-    // --------------------------------------------------------
-    // GLOBAL
-    // --------------------------------------------------------
 
     html += "*{box-sizing:border-box;}";
 
     html += "body{";
     html += "margin:0;";
     html += "font-family:Arial,Helvetica,sans-serif;";
-    html += "background:#0b0f14;";
-    html += "color:#f5f7fa;";
+    html += "background:#080b10;";
+    html += "color:#e8faff;";
     html += "}";
 
     html += ".container{";
-    html += "width:100%;";
-    html += "max-width:1100px;";
+    html += "max-width:1200px;";
     html += "margin:auto;";
     html += "padding:20px;";
     html += "}";
 
-    // --------------------------------------------------------
     // HEADER
-    // --------------------------------------------------------
-
     html += ".header{";
     html += "display:flex;";
     html += "justify-content:space-between;";
     html += "align-items:center;";
-    html += "margin-bottom:22px;";
+    html += "margin-bottom:18px;";
+    html += "flex-wrap:wrap;";
+    html += "gap:12px;";
     html += "}";
 
     html += ".logo{";
     html += "font-size:30px;";
-    html += "font-weight:700;";
-    html += "letter-spacing:3px;";
-    html += "color:#00d9ff;";
+    html += "font-weight:bold;";
+    html += "letter-spacing:4px;";
+    html += "color:#00eaff;";
     html += "}";
 
     html += ".status{";
     html += "display:flex;";
     html += "align-items:center;";
     html += "gap:8px;";
-    html += "font-size:14px;";
-    html += "color:#9aa4b2;";
+    html += "font-size:13px;";
+    html += "color:#9aa7b3;";
     html += "}";
 
     html += ".dot{";
     html += "width:10px;";
     html += "height:10px;";
-    html += "background:#28d17c;";
     html += "border-radius:50%;";
-    html += "box-shadow:0 0 10px #28d17c;";
+    html += "background:#00e676;";
+    html += "box-shadow:0 0 10px #00e676;";
     html += "}";
 
-    // --------------------------------------------------------
-    // NAVIGATION
-    // --------------------------------------------------------
-
+    // NAV
     html += ".nav{";
     html += "display:flex;";
     html += "gap:8px;";
-    html += "margin-bottom:24px;";
+    html += "margin-bottom:20px;";
+    html += "flex-wrap:wrap;";
     html += "}";
 
     html += ".nav a{";
     html += "text-decoration:none;";
-    html += "color:#aeb8c5;";
-    html += "padding:10px 18px;";
-    html += "border-radius:9px;";
-    html += "background:#151b23;";
+    html += "color:#9aa7b3;";
+    html += "background:#111720;";
+    html += "border:1px solid #202b36;";
+    html += "padding:9px 15px;";
+    html += "border-radius:8px;";
     html += "font-size:14px;";
     html += "}";
 
-    html += ".nav a.active{";
-    html += "background:#00a9c7;";
-    html += "color:#fff;";
+    html += ".nav a:hover{";
+    html += "color:#00eaff;";
+    html += "border-color:#00eaff;";
     html += "}";
 
-    // --------------------------------------------------------
-    // CLOCK CARD
-    // --------------------------------------------------------
+    html += ".nav a.active{";
+    html += "color:#00eaff;";
+    html += "border-color:#00eaff;";
+    html += "}";
 
+    // MAIN CLOCK
     html += ".clock-card{";
-    html += "background:linear-gradient(135deg,#111923,#0e141c);";
-    html += "border:1px solid #202b38;";
-    html += "border-radius:18px;";
-    html += "padding:28px;";
+    html += "background:linear-gradient(135deg,#0d141c,#101923);";
+    html += "border:1px solid #1c3540;";
+    html += "border-radius:16px;";
+    html += "padding:24px;";
     html += "margin-bottom:18px;";
-    html += "text-align:center;";
+    html += "box-shadow:0 0 25px rgba(0,234,255,.06);";
     html += "}";
 
     html += ".clock-label{";
-    html += "font-size:13px;";
-    html += "color:#7e8a99;";
-    html += "text-transform:uppercase;";
+    html += "font-size:12px;";
     html += "letter-spacing:2px;";
+    html += "color:#6f8995;";
+    html += "margin-bottom:5px;";
     html += "}";
 
     html += ".clock{";
     html += "font-size:58px;";
-    html += "font-weight:700;";
-    html += "color:#00d9ff;";
-    html += "margin:8px 0;";
-    html += "letter-spacing:3px;";
+    html += "font-weight:bold;";
+    html += "letter-spacing:4px;";
+    html += "color:#00eaff;";
+    html += "text-shadow:0 0 18px rgba(0,234,255,.25);";
     html += "}";
 
     html += ".date{";
-    html += "font-size:16px;";
-    html += "color:#aeb8c5;";
+    html += "font-size:15px;";
+    html += "color:#8fa2ad;";
+    html += "margin-top:5px;";
     html += "}";
 
-    // --------------------------------------------------------
-    // SENSOR GRID
-    // --------------------------------------------------------
+    // SECTION
+    html += ".section-title{";
+    html += "font-size:13px;";
+    html += "letter-spacing:2px;";
+    html += "color:#6f8995;";
+    html += "margin:24px 0 10px 2px;";
+    html += "}";
 
+    // GRID
     html += ".grid{";
     html += "display:grid;";
-    html += "grid-template-columns:repeat(4,1fr);";
-    html += "gap:14px;";
-    html += "margin-bottom:18px;";
+    html += "grid-template-columns:repeat(3,1fr);";
+    html += "gap:12px;";
     html += "}";
 
+    // CARD
     html += ".card{";
-    html += "background:#121820;";
-    html += "border:1px solid #202b38;";
-    html += "border-radius:16px;";
-    html += "padding:20px;";
+    html += "background:#10161e;";
+    html += "border:1px solid #202b36;";
+    html += "border-radius:12px;";
+    html += "padding:16px;";
+    html += "min-height:125px;";
     html += "}";
 
     html += ".card-title{";
-    html += "font-size:13px;";
-    html += "color:#7e8a99;";
+    html += "font-size:12px;";
+    html += "color:#73838f;";
+    html += "letter-spacing:1px;";
+    html += "text-transform:uppercase;";
     html += "margin-bottom:12px;";
     html += "}";
 
     html += ".value{";
     html += "font-size:28px;";
-    html += "font-weight:600;";
-    html += "color:#f5f7fa;";
+    html += "font-weight:bold;";
+    html += "color:#e8faff;";
     html += "}";
 
     html += ".unit{";
     html += "font-size:14px;";
-    html += "color:#7e8a99;";
-    html += "margin-left:3px;";
+    html += "color:#71838e;";
+    html += "margin-left:4px;";
     html += "}";
 
-    // --------------------------------------------------------
-    // SYSTEM GRID
-    // --------------------------------------------------------
+    html += ".small-value{";
+    html += "font-size:16px;";
+    html += "font-weight:bold;";
+    html += "color:#d7e7ed;";
+    html += "}";
 
-    html += ".system-grid{";
+    html += ".muted{";
+    html += "color:#687985;";
+    html += "}";
+
+    // STATUS BADGES
+    html += ".badge{";
+    html += "display:inline-block;";
+    html += "padding:5px 9px;";
+    html += "border-radius:20px;";
+    html += "font-size:11px;";
+    html += "font-weight:bold;";
+    html += "letter-spacing:.5px;";
+    html += "background:#18231f;";
+    html += "color:#00e676;";
+    html += "}";
+
+    html += ".badge.off{";
+    html += "background:#21191a;";
+    html += "color:#ff6b6b;";
+    html += "}";
+
+    // TWO COLUMN INFORMATION
+    html += ".info-grid{";
     html += "display:grid;";
     html += "grid-template-columns:repeat(2,1fr);";
-    html += "gap:14px;";
-    html += "margin-bottom:18px;";
+    html += "gap:12px;";
     html += "}";
 
-    html += ".info{";
+    html += ".info-card{";
+    html += "background:#10161e;";
+    html += "border:1px solid #202b36;";
+    html += "border-radius:12px;";
+    html += "padding:16px;";
+    html += "}";
+
+    html += ".info-row{";
     html += "display:flex;";
     html += "justify-content:space-between;";
-    html += "padding:10px 0;";
-    html += "border-bottom:1px solid #202832;";
+    html += "gap:15px;";
+    html += "padding:8px 0;";
+    html += "border-bottom:1px solid #1b252e;";
     html += "}";
 
-    html += ".info:last-child{";
+    html += ".info-row:last-child{";
     html += "border-bottom:none;";
     html += "}";
 
     html += ".info-label{";
-    html += "color:#7e8a99;";
+    html += "color:#72838e;";
+    html += "font-size:13px;";
     html += "}";
 
     html += ".info-value{";
-    html += "color:#f5f7fa;";
+    html += "color:#d9e9ef;";
+    html += "font-size:13px;";
+    html += "font-weight:bold;";
+    html += "text-align:right;";
     html += "}";
 
-    // --------------------------------------------------------
     // FOOTER
-    // --------------------------------------------------------
-
     html += ".footer{";
     html += "text-align:center;";
-    html += "color:#596575;";
-    html += "font-size:12px;";
-    html += "padding:15px;";
+    html += "margin-top:28px;";
+    html += "font-size:11px;";
+    html += "color:#4d5c65;";
     html += "}";
 
-    // --------------------------------------------------------
-    // MOBILE
-    // --------------------------------------------------------
-
-    html += "@media(max-width:750px){";
-
-    html += ".container{padding:14px;}";
-
-    html += ".header{";
-    html += "margin-bottom:15px;";
+    // RESPONSIVE
+    html += "@media(max-width:800px){";
+    html += ".grid{grid-template-columns:repeat(2,1fr);}";
+    html += ".info-grid{grid-template-columns:1fr;}";
+    html += ".clock{font-size:46px;}";
     html += "}";
 
-    html += ".logo{";
-    html += "font-size:25px;";
-    html += "}";
-
-    html += ".grid{";
-    html += "grid-template-columns:repeat(2,1fr);";
-    html += "}";
-
-    html += ".system-grid{";
-    html += "grid-template-columns:1fr;";
-    html += "}";
-
-    html += ".clock{";
-    html += "font-size:44px;";
-    html += "}";
-
+    html += "@media(max-width:520px){";
+    html += ".container{padding:12px;}";
+    html += ".grid{grid-template-columns:1fr;}";
+    html += ".clock{font-size:38px;}";
+    html += ".logo{font-size:25px;}";
     html += "}";
 
     html += "</style>";
 
     html += "</head>";
-
-    // --------------------------------------------------------
-    // BODY
-    // --------------------------------------------------------
-
     html += "<body>";
 
     html += "<div class='container'>";
 
-    // Header
+    // ============================================================
+    // HEADER
+    // ============================================================
+
     html += "<div class='header'>";
 
-    html += "<div class='logo'>ORA</div>";
+    html += "<div class='logo'>ORA e Lapit</div>";
 
     html += "<div class='status'>";
-    html += "<span class='dot'></span>";
-    html += "<span>ONLINE</span>";
+    html += "<span class='dot' id='statusDot'></span>";
+    html += "<span id='statusText'>ONLINE</span>";
     html += "</div>";
 
     html += "</div>";
 
-    // Navigation
+    // ============================================================
+    // NAVIGATION
+    // ============================================================
+
     html += "<div class='nav'>";
 
     html += "<a class='active' href='/'>Dashboard</a>";
@@ -267,105 +299,155 @@ String getDashboardPage()
 
     html += "</div>";
 
-    // Clock
+    // ============================================================
+    // CLOCK
+    // ============================================================
+
     html += "<div class='clock-card'>";
 
-    html += "<div class='clock-label'>Current Time</div>";
+    html += "<div class='clock-label'>ORA E SAKTE</div>";
 
-    html += "<div class='clock' id='clock'>--:--:--</div>";
+    html += "<div class='clock' id='time'>--:--:--</div>";
 
-    html += "<div class='date' id='date'>Waiting for time...</div>";
+    html += "<div class='date' id='date'>--</div>";
 
     html += "</div>";
 
-    // Sensor cards
+    // ============================================================
+    // ENVIRONMENT
+    // ============================================================
+
+    html += "<div class='section-title'>AMBIENTALE</div>";
+
     html += "<div class='grid'>";
 
     // Temperature
     html += "<div class='card'>";
-    html += "<div class='card-title'>TEMPERATURE</div>";
-    html += "<div class='value'>";
-    html += "<span id='temperature'>--</span>";
+    html += "<div class='card-title'>Temperatura</div>";
+    html += "<div class='value' id='temperature'>--</div>";
     html += "<span class='unit'>°C</span>";
-    html += "</div>";
     html += "</div>";
 
     // Humidity
     html += "<div class='card'>";
-    html += "<div class='card-title'>HUMIDITY</div>";
-    html += "<div class='value'>";
-    html += "<span id='humidity'>--</span>";
+    html += "<div class='card-title'>Lageshtira</div>";
+    html += "<div class='value' id='humidity'>--</div>";
     html += "<span class='unit'>%</span>";
-    html += "</div>";
     html += "</div>";
 
     // Pressure
     html += "<div class='card'>";
-    html += "<div class='card-title'>PRESSURE</div>";
-    html += "<div class='value'>";
-    html += "<span id='pressure'>--</span>";
+    html += "<div class='card-title'>Presioni</div>";
+    html += "<div class='value' id='pressure'>--</div>";
     html += "<span class='unit'>hPa</span>";
-    html += "</div>";
     html += "</div>";
 
     // Lux
     html += "<div class='card'>";
-    html += "<div class='card-title'>LIGHT</div>";
-    html += "<div class='value'>";
-    html += "<span id='lux'>--</span>";
+    html += "<div class='card-title'>Ndricimi</div>";
+    html += "<div class='value' id='lux'>--</div>";
     html += "<span class='unit'>lux</span>";
     html += "</div>";
-    html += "</div>";
 
-    html += "</div>";
-
-    // System
-    html += "<div class='system-grid'>";
-
-    // WiFi
+    // Air Quality
     html += "<div class='card'>";
-
-    html += "<div class='card-title'>NETWORK</div>";
-
-    html += "<div class='info'>";
-    html += "<span class='info-label'>SSID</span>";
-    html += "<span class='info-value' id='ssid'>";
-    html += WiFi.SSID();
-    html += "</span>";
+    html += "<div class='card-title'>Cilësia e Ajrit</div>";
+    html += "<div class='value' id='air'>--</div>";
+    html += "<div class='unit' id='gas'>--</div>";
     html += "</div>";
 
-    html += "<div class='info'>";
+    // Motion
+    html += "<div class='card'>";
+    html += "<div class='card-title'>Levizje</div>";
+    html += "<div id='motion' class='badge'>Ska Levizje</div>";
+    html += "<div class='muted' style='margin-top:12px;font-size:12px;' id='pirStatus'>PIR</div>";
+    html += "</div>";
+
+    html += "</div>";
+
+    // ============================================================
+    // WEATHER
+    // ============================================================
+
+    html += "<div class='section-title'>SHERBIMI I MOTIT</div>";
+
+    html += "<div class='grid'>";
+
+    html += "<div class='card'>";
+    html += "<div class='card-title'>Temperatura e Motit</div>";
+    html += "<div class='value' id='weatherTemp'>--</div>";
+    html += "<span class='unit'>°C</span>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='card-title'>Era</div>";
+    html += "<div class='value' id='wind'>--</div>";
+    html += "<span class='unit'>km/h</span>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='card-title'>Kodi i Motit</div>";
+    html += "<div class='value' id='weatherCode'>--</div>";
+    html += "</div>";
+
+    html += "</div>";
+
+    // ============================================================
+    // NETWORK + SYSTEM
+    // ============================================================
+
+    html += "<div class='section-title'>SYSTEM</div>";
+
+    html += "<div class='info-grid'>";
+
+    // Network
+    html += "<div class='info-card'>";
+
+    html += "<div class='card-title'>Network</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Wi-Fi</span>";
+    html += "<span class='info-value' id='wifi'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
     html += "<span class='info-label'>IP Address</span>";
-    html += "<span class='info-value' id='ip'>";
-    html += WiFi.localIP().toString();
-    html += "</span>";
+    html += "<span class='info-value' id='ip'>--</span>";
     html += "</div>";
 
-    html += "<div class='info'>";
+    html += "<div class='info-row'>";
     html += "<span class='info-label'>Signal</span>";
-    html += "<span class='info-value' id='rssi'>";
-    html += String(WiFi.RSSI());
-    html += " dBm</span>";
+    html += "<span class='info-value' id='rssi'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Connection</span>";
+    html += "<span class='info-value' id='wifiStatus'>--</span>";
     html += "</div>";
 
     html += "</div>";
 
     // System
-    html += "<div class='card'>";
+    html += "<div class='info-card'>";
 
-    html += "<div class='card-title'>SYSTEM</div>";
+    html += "<div class='card-title'>ESP32 SYSTEM</div>";
 
-    html += "<div class='info'>";
+    html += "<div class='info-row'>";
     html += "<span class='info-label'>CPU</span>";
-    html += "<span class='info-value' id='cpu'>-- MHz</span>";
+    html += "<span class='info-value' id='cpu'>--</span>";
     html += "</div>";
 
-    html += "<div class='info'>";
+    html += "<div class='info-row'>";
     html += "<span class='info-label'>Free Heap</span>";
     html += "<span class='info-value' id='heap'>--</span>";
     html += "</div>";
 
-    html += "<div class='info'>";
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Flash</span>";
+    html += "<span class='info-value' id='flash'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
     html += "<span class='info-label'>Uptime</span>";
     html += "<span class='info-value' id='uptime'>--</span>";
     html += "</div>";
@@ -374,64 +456,168 @@ String getDashboardPage()
 
     html += "</div>";
 
-    // Footer
+    // ============================================================
+    // ORA SETTINGS STATUS
+    // ============================================================
+
+    html += "<div class='section-title'>ORA SETTINGS</div>";
+
+    html += "<div class='info-card'>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Clock Format</span>";
+    html += "<span class='info-value' id='format'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Date</span>";
+    html += "<span class='info-value' id='dateSetting'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Weather</span>";
+    html += "<span class='info-value' id='weatherSetting'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Light Sensor</span>";
+    html += "<span class='info-value' id='lightSetting'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>PIR</span>";
+    html += "<span class='info-value' id='pirSetting'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Weather Display</span>";
+    html += "<span class='info-value' id='weatherTime'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Local Sensors Display</span>";
+    html += "<span class='info-value' id='localTime'>--</span>";
+    html += "</div>";
+
+    html += "</div>";
+
+    // ============================================================
+    // FOOTER
+    // ============================================================
+
     html += "<div class='footer'>";
-    html += "ORA Smart Clock &nbsp;•&nbsp; ESP32-S3";
+    html += "ORA • ILI9488 CLOCK • ESP32-S3";
     html += "</div>";
 
     html += "</div>";
 
-    // --------------------------------------------------------
+    // ============================================================
     // JAVASCRIPT
-    // --------------------------------------------------------
+    // ============================================================
 
     html += "<script>";
 
-    html += "function updateData(){";
+    html += "function setText(id,value){";
+    html += "const e=document.getElementById(id);";
+    html += "if(e)e.textContent=value;";
+    html += "}";
+
+    html += "function onOff(v){return v?'ON':'OFF';}";
+
+    html += "function formatUptime(sec){";
+    html += "sec=Math.floor(sec||0);";
+    html += "let d=Math.floor(sec/86400);";
+    html += "sec%=86400;";
+    html += "let h=Math.floor(sec/3600);";
+    html += "sec%=3600;";
+    html += "let m=Math.floor(sec/60);";
+    html += "let s=sec%60;";
+    html += "return (d?d+'d ':'')+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');";
+    html += "}";
+
+    html += "function updateDashboard(){";
 
     html += "fetch('/api/status')";
-    html += ".then(response=>response.json())";
-    html += ".then(data=>{";
+    html += ".then(r=>r.json())";
+    html += ".then(d=>{";
 
-    html += "if(data.temperature!==undefined)";
-    html += "document.getElementById('temperature').innerText=data.temperature;";
+    // Status
+    html += "setText('statusText',d.wifiConnected?'ONLINE':'OFFLINE');";
 
-    html += "if(data.humidity!==undefined)";
-    html += "document.getElementById('humidity').innerText=data.humidity;";
+    // Time
+    html += "setText('time',d.time||'--:--:--');";
+    html += "setText('date',d.date||'--');";
 
-    html += "if(data.pressure!==undefined)";
-    html += "document.getElementById('pressure').innerText=data.pressure;";
+    // BME680
+    html += "setText('temperature',d.bmeTemperature==null?'--':Number(d.bmeTemperature).toFixed(1));";
+    html += "setText('humidity',d.bmeHumidity==null?'--':Number(d.bmeHumidity).toFixed(1));";
 
-    html += "if(data.lux!==undefined)";
-    html += "document.getElementById('lux').innerText=data.lux;";
+    // Pressure from weather/API
+    html += "setText('pressure',d.pressure==null?'--':Number(d.pressure).toFixed(1));";
 
-    html += "if(data.time!==undefined)";
-    html += "document.getElementById('clock').innerText=data.time;";
+    // Lux
+    html += "setText('lux',d.lux==null?'--':Number(d.lux).toFixed(0));";
 
-    html += "if(data.ip!==undefined)";
-    html += "document.getElementById('ip').innerText=data.ip;";
+    // Gas / Air
+    html += "setText('gas',d.bmeGas==null?'Gas --':('Gas '+Number(d.bmeGas).toFixed(0)));";
 
-    html += "if(data.rssi!==undefined)";
-    html += "document.getElementById('rssi').innerText=data.rssi+' dBm';";
+    html += "let air='--';";
+    html += "if(d.bme680OK&&d.bmeGas!=null){";
+    html += "if(d.bmeGas>=100000)air='GOOD';";
+    html += "else if(d.bmeGas>=50000)air='FAIR';";
+    html += "else air='POOR';";
+    html += "}";
+    html += "setText('air',air);";
 
-    html += "if(data.cpu!==undefined)";
-    html += "document.getElementById('cpu').innerText=data.cpu+' MHz';";
+    // PIR
+    html += "const motion=document.getElementById('motion');";
+    html += "if(d.pirMotion){";
+    html += "motion.textContent='MOTION';";
+    html += "motion.className='badge';";
+    html += "}else{";
+    html += "motion.textContent='NO MOTION';";
+    html += "motion.className='badge off';";
+    html += "}";
 
-    html += "if(data.heap!==undefined)";
-    html += "document.getElementById('heap').innerText=data.heap;";
+    html += "setText('pirStatus',d.pirState===1?'Motion detected':'Monitoring');";
 
-    html += "if(data.uptime!==undefined)";
-    html += "document.getElementById('uptime').innerText=data.uptime;";
+    // Weather
+    html += "setText('weatherTemp',d.temperature==null?'--':Number(d.temperature).toFixed(1));";
+    html += "setText('wind',d.windSpeed==null?'--':Number(d.windSpeed).toFixed(1));";
+    html += "setText('weatherCode',d.weatherCode==null?'--':d.weatherCode);";
+
+    // Network
+    html += "setText('wifi',d.wifi||'--');";
+    html += "setText('ip',d.ip||'--');";
+    html += "setText('rssi',d.rssi==null?'--':d.rssi+' dBm');";
+    html += "setText('wifiStatus',d.wifiConnected?'CONNECTED':'OFFLINE');";
+
+    // System
+    html += "setText('cpu',d.cpu==null?'--':d.cpu+' MHz');";
+    html += "setText('heap',d.heap==null?'--':Math.round(d.heap/1024)+' KB');";
+    html += "setText('flash',d.flash==null?'--':Math.round(d.flash/1048576)+' MB');";
+    html += "setText('uptime',formatUptime(d.uptime));";
+
+    // Settings
+    html += "setText('format',d.setting24Hour?'24 HOUR':'12 HOUR');";
+    html += "setText('dateSetting',onOff(d.settingDate));";
+    html += "setText('weatherSetting',onOff(d.settingWeather));";
+    html += "setText('lightSetting',onOff(d.settingLightSensor));";
+    html += "setText('pirSetting',onOff(d.settingPIR));";
+
+    html += "setText('weatherTime',d.weatherDisplayTime+' sec');";
+    html += "setText('localTime',d.localSensorsDisplayTime+' sec');";
 
     html += "})";
 
-    html += ".catch(error=>console.log('API error:',error));";
+    html += ".catch(e=>{";
+    html += "setText('statusText','OFFLINE');";
+    html += "});";
 
     html += "}";
 
-    html += "updateData();";
-
-    html += "setInterval(updateData,3000);";
+    html += "updateDashboard();";
+    html += "setInterval(updateDashboard,3000);";
 
     html += "</script>";
 
@@ -440,8 +626,6 @@ String getDashboardPage()
 
     return html;
 }
-
-
 String getSettingsPage()
 {
     String html;
@@ -514,6 +698,7 @@ String getSettingsPage()
     html += "display:flex;";
     html += "justify-content:space-between;";
     html += "align-items:center;";
+    html += "gap:20px;";
     html += "padding:16px 0;";
     html += "border-bottom:1px solid #202832;";
     html += "}";
@@ -532,12 +717,75 @@ String getSettingsPage()
     html += "margin-top:4px;";
     html += "}";
 
+    html += ".control{";
+    html += "display:flex;";
+    html += "align-items:center;";
+    html += "gap:8px;";
+    html += "flex-shrink:0;";
+    html += "}";
+
+    html += "select,input[type='number']{";
+    html += "background:#1d2833;";
+    html += "color:#fff;";
+    html += "border:1px solid #344352;";
+    html += "border-radius:8px;";
+    html += "padding:9px 12px;";
+    html += "font-size:14px;";
+    html += "}";
+
+    html += "select{";
+    html += "min-width:100px;";
+    html += "}";
+
+    html += "input[type='number']{";
+    html += "width:100px;";
+    html += "}";
+
     html += ".badge{";
     html += "background:#1d2833;";
     html += "color:#00d9ff;";
     html += "padding:6px 10px;";
     html += "border-radius:7px;";
     html += "font-size:12px;";
+    html += "}";
+
+    html += ".save{";
+    html += "width:100%;";
+    html += "border:none;";
+    html += "border-radius:10px;";
+    html += "padding:14px;";
+    html += "background:#00a9c7;";
+    html += "color:#fff;";
+    html += "font-size:16px;";
+    html += "font-weight:600;";
+    html += "cursor:pointer;";
+    html += "}";
+
+    html += ".save:hover{";
+    html += "background:#00bddc;";
+    html += "}";
+
+    html += ".note{";
+    html += "font-size:12px;";
+    html += "color:#7e8a99;";
+    html += "text-align:center;";
+    html += "margin-top:12px;";
+    html += "}";
+
+    html += "@media(max-width:600px){";
+
+    html += ".container{";
+    html += "padding:14px;";
+    html += "}";
+
+    html += ".setting{";
+    html += "align-items:flex-start;";
+    html += "}";
+
+    html += ".control{";
+    html += "margin-top:2px;";
+    html += "}";
+
     html += "}";
 
     html += "</style>";
@@ -548,6 +796,10 @@ String getSettingsPage()
 
     html += "<div class='container'>";
 
+    // --------------------------------------------------------
+    // HEADER
+    // --------------------------------------------------------
+
     html += "<div class='header'>";
 
     html += "<div class='logo'>ORA</div>";
@@ -556,79 +808,245 @@ String getSettingsPage()
 
     html += "</div>";
 
-    // Display settings
+    // --------------------------------------------------------
+    // TIME / DISPLAY
+    // --------------------------------------------------------
+
+    html += "<form method='POST' action='/settings/save'>";
+
     html += "<div class='card'>";
 
-    html += "<h2>Display</h2>";
+    html += "<h2>Time / Display</h2>";
 
+    // Clock format
     html += "<div class='setting'>";
-    html += "<div>";
-    html += "<div class='label'>Brightness</div>";
-    html += "<div class='description'>Display brightness</div>";
-    html += "</div>";
-    html += "<div class='badge'>Coming soon</div>";
-    html += "</div>";
 
-    html += "<div class='setting'>";
     html += "<div>";
     html += "<div class='label'>Clock format</div>";
-    html += "<div class='description'>12 / 24 hour format</div>";
-    html += "</div>";
-    html += "<div class='badge'>24H</div>";
+    html += "<div class='description'>Choose 12 or 24 hour format</div>";
     html += "</div>";
 
+    html += "<div class='control'>";
+
+    html += "<select name='24hour'>";
+
+    if (setting24Hour)
+        html += "<option value='1' selected>24H</option>";
+    else
+        html += "<option value='1'>24H</option>";
+
+    if (!setting24Hour)
+        html += "<option value='0' selected>12H</option>";
+    else
+        html += "<option value='0'>12H</option>";
+
+    html += "</select>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    // Date
     html += "<div class='setting'>";
+
     html += "<div>";
     html += "<div class='label'>Date</div>";
     html += "<div class='description'>Show date on display</div>";
     html += "</div>";
-    html += "<div class='badge'>ON</div>";
+
+    html += "<div class='control'>";
+
+    html += "<select name='date'>";
+
+    if (settingDate)
+        html += "<option value='1' selected>ON</option>";
+    else
+        html += "<option value='1'>ON</option>";
+
+    if (!settingDate)
+        html += "<option value='0' selected>OFF</option>";
+    else
+        html += "<option value='0'>OFF</option>";
+
+    html += "</select>";
+
+    html += "</div>";
+
     html += "</div>";
 
     html += "</div>";
 
-    // Sensors
+    // --------------------------------------------------------
+    // LOWER PANEL
+    // --------------------------------------------------------
+
+    html += "<div class='card'>";
+
+    html += "<h2>Lower Panel</h2>";
+
+    // Weather display time
+    html += "<div class='setting'>";
+
+    html += "<div>";
+    html += "<div class='label'>Weather display time</div>";
+    html += "<div class='description'>How long weather information stays on screen</div>";
+    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<input type='number' ";
+    html += "name='weatherTime' ";
+    html += "min='1' ";
+    html += "max='300' ";
+    html += "value='";
+    html += String(weatherDisplayTime / 1000);
+    html += "'>";
+
+    html += "<span class='badge'>sec</span>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    // Local sensors display time
+    html += "<div class='setting'>";
+
+    html += "<div>";
+    html += "<div class='label'>Local Sensors display time</div>";
+    html += "<div class='description'>How long BME680 / BH1750 data stays on screen</div>";
+    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<input type='number' ";
+    html += "name='localTime' ";
+    html += "min='1' ";
+    html += "max='300' ";
+    html += "value='";
+    html += String(localSensorsDisplayTime / 1000);
+    html += "'>";
+
+    html += "<span class='badge'>sec</span>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    // --------------------------------------------------------
+    // SENSORS
+    // --------------------------------------------------------
+
     html += "<div class='card'>";
 
     html += "<h2>Sensors</h2>";
 
+    // Weather
     html += "<div class='setting'>";
+
     html += "<div>";
     html += "<div class='label'>Weather</div>";
-    html += "<div class='description'>Temperature and weather information</div>";
-    html += "</div>";
-    html += "<div class='badge'>ON</div>";
+    html += "<div class='description'>Internet weather information</div>";
     html += "</div>";
 
+    html += "<div class='badge'>ON</div>";
+
+    html += "</div>";
+
+    // Light sensor
     html += "<div class='setting'>";
+
     html += "<div>";
     html += "<div class='label'>Light sensor</div>";
     html += "<div class='description'>BH1750 ambient light</div>";
     html += "</div>";
+
     html += "<div class='badge'>ON</div>";
-    html += "</div>";
 
     html += "</div>";
 
-    // System
-    html += "<div class='card'>";
-
-    html += "<h2>System</h2>";
-
+    // PIR
     html += "<div class='setting'>";
+
     html += "<div>";
-    html += "<div class='label'>Web Server</div>";
-    html += "<div class='description'>ESP32 web interface</div>";
+    html += "<div class='label'>PIR sensor</div>";
+    html += "<div class='description'>Motion detection and wake-up</div>";
     html += "</div>";
-    html += "<div class='badge'>RUNNING</div>";
-    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<select name='pir'>";
+
+    if (settingPIR)
+        html += "<option value='1' selected>ON</option>";
+    else
+        html += "<option value='1'>ON</option>";
+
+    if (!settingPIR)
+        html += "<option value='0' selected>OFF</option>";
+    else
+        html += "<option value='0'>OFF</option>";
+
+    html += "</select>";
 
     html += "</div>";
 
     html += "</div>";
 
-    html += "</body>";
-    html += "</html>";
+    html += "</div>";
 
-    return html;
+  // --------------------------------------------------------
+// SYSTEM
+// --------------------------------------------------------
+
+html += "<div class='card'>";
+
+html += "<h2>System</h2>";
+
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Web Server</div>";
+html += "<div class='description'>ESP32 web interface</div>";
+html += "</div>";
+
+html += "<div class='badge'>RUNNING</div>";
+
+html += "</div>";
+
+html += "<button type='button' class='restart' onclick='restartESP()'>";
+html += "Rinis ESP32";
+html += "</button>";
+
+html += "</div>";
+    // --------------------------------------------------------
+    // SAVE
+    // --------------------------------------------------------
+
+    html += "<button class='save' type='submit'>";
+    html += "Save Settings";
+    html += "</button>";
+
+    html += "<div class='note'>";
+    html += "Settings are stored permanently in ESP32 memory. Mundesoi Lapi.";
+    html += "</div>";
+html += "</form>";
+
+html += "</div>";
+
+html += "<script>";
+
+html += "function restartESP(){";
+html += "if(!confirm('Doni të rinisni ESP32?')) return;";
+html += "fetch('/restart',{method:'POST'});";
+html += "alert('ESP32 po riniset...');";
+html += "}";
+
+html += "</script>";
+
+html += "</body>";
+html += "</html>";
+
+return html;
 }

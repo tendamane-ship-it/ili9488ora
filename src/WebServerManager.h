@@ -22,6 +22,7 @@ private:
     void handleSettings();
     void handleApiStatus();
     void handleApiPage();
+    void handleSettingsSave();
 };
 
 #endif
