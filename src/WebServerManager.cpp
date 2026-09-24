@@ -3,6 +3,7 @@
 #include <time.h>
 #include "Pages.h"
 #include <Preferences.h>
+#include "TuyaService.h"
 
 extern Preferences preferences;
 
@@ -16,11 +17,14 @@ extern unsigned long weatherDisplayTime;
 extern float bh1750Lux;
 extern bool bh1750OK;
 extern int pirState;
+extern bool settingScreenSaver;
+extern unsigned long screenSaverDelay;
 
 extern float bmeTemp;
 extern float bmeHumidity;
 extern float bmeGas;
 extern bool bme680OK;
+extern TuyaService tuyaService;
 WebServerManager::WebServerManager()
     : server(80),
       weather(nullptr)
@@ -46,6 +50,11 @@ void WebServerManager::begin()
     {
         handleSettingsSave();
     });
+    server.on("/tuya", [this]() { handleTuya(); });
+    server.on("/weather", [this]()
+{
+    handleWeather();
+});
 
     server.on("/restart", HTTP_POST, [this]()
     {
@@ -308,15 +317,26 @@ void WebServerManager::handleApiPage()
     html += "body{font-family:Arial,sans-serif;background:#111;color:#eee;padding:20px;}";
     html += "h1{margin-bottom:10px;}";
     html += "button{background:#333;color:#fff;border:1px solid #555;padding:10px 16px;border-radius:8px;cursor:pointer;margin-right:8px;}";
+   html += ".nav{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}";
+html += ".nav a{color:#9aa7b3;background:#1b1b1b;border:1px solid #444;padding:9px 15px;border-radius:8px;text-decoration:none;font-size:14px;}";
+html += ".nav a:hover{color:#00eaff;border-color:#00eaff;}";
+html += ".nav a.active{color:#00eaff;border-color:#00eaff;}";
     html += "pre{background:#1b1b1b;padding:20px;border-radius:10px;overflow:auto;margin-top:20px;}";
     html += "</style>";
 
     html += "</head><body>";
 
-    html += "<h1>API Status</h1>";
+   html += "<div class='nav'>";
+html += "<a href='/'>Dashboard</a>";
+html += "<a href='/weather'>Weather</a>";
+html += "<a href='/tuya'>Tuya</a>";
+html += "<a href='/settings'>Settings</a>";
+html += "<a href='/api' class='active'>API Status</a>";
+html += "</div>";
 
-    html += "<button onclick=\"location.href='/'\">← Dashboard</button>";
-    html += "<button onclick='loadAPI()'>Refresh</button>";
+html += "<h1>API Status</h1>";
+
+html += "<button onclick='loadAPI()'>Refresh</button>";
 
     html += "<pre id='json'>Loading...</pre>";
 
@@ -337,6 +357,301 @@ void WebServerManager::handleApiPage()
     html += "</body></html>";
 
     server.send(200, "text/html", html);
+}
+void WebServerManager::handleTuya()
+{
+    String html;
+
+    html += "<!DOCTYPE html>";
+    html += "<html>";
+    html += "<head>";
+    html += "<meta charset='UTF-8'>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    html += "<meta http-equiv='refresh' content='60'>";
+    html += "<title>ORA - Tuya TH01</title>";
+
+    html += "<style>";
+    html += "body{font-family:Arial,sans-serif;background:#111;color:#eee;margin:0;padding:20px;}";
+    html += ".container{max-width:600px;margin:auto;}";
+    html += "h1{color:#00ffff;}";
+    html += ".card{background:#1d1d1d;border-radius:12px;padding:20px;margin-top:20px;}";
+    html += ".value{font-size:32px;color:#00ffff;margin:10px 0;}";
+    html += ".label{color:#aaa;font-size:14px;}";
+    html += ".status{color:#00ff66;font-weight:bold;}";
+    html += "a{color:#00ffff;text-decoration:none;}";
+    html += "</style>";
+
+    html += "</head>";
+    html += "<body>";
+
+    html += "<div class='container'>";
+
+    html += "<h1>ORA — Tuya TH01</h1>";
+
+    html += "<div class='card'>";
+
+    if (tuyaService.isOnline())
+    {
+        html += "<div class='status'>● ONLINE</div>";
+
+        html += "<div class='label'>Temperature</div>";
+        html += "<div class='value'>";
+        html += String(tuyaService.getTemperature(), 1);
+        html += " &deg;C</div>";
+
+        html += "<div class='label'>Humidity</div>";
+        html += "<div class='value'>";
+        html += String(tuyaService.getHumidity(), 1);
+        html += " %</div>";
+
+        html += "<div class='label'>Battery</div>";
+        html += "<div class='value'>";
+        html += String(tuyaService.getBattery());
+        html += " %</div>";
+    }
+    else
+    {
+        html += "<div style='color:#ff4444;font-weight:bold;'>● OFFLINE</div>";
+        html += "<p>Tuya TH01 nuk është aktualisht i disponueshëm.</p>";
+    }
+
+    html += "</div>";
+
+    html += "<p style='margin-top:25px;'>";
+    html += "<a href='/'>← ORA Dashboard</a>";
+    html += "</p>";
+
+    html += "</div>";
+
+    html += "</body>";
+    html += "</html>";
+
+    server.send(200, "text/html; charset=UTF-8", html);
+}
+void WebServerManager::handleWeather()
+{
+    String html;
+
+    html += "<!DOCTYPE html>";
+    html += "<html>";
+    html += "<head>";
+    html += "<meta charset='UTF-8'>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    html += "<meta http-equiv='refresh' content='300'>";
+    html += "<title>ORA - Weather</title>";
+
+    html += "<style>";
+    html += "body{font-family:Arial,sans-serif;background:#111;color:#eee;margin:0;padding:20px;}";
+    html += ".container{max-width:900px;margin:auto;}";
+    html += "h1{color:#00ffff;}";
+    html += "h2{color:#00ffff;margin-top:30px;}";
+    html += ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}";
+    html += ".card{background:#1d1d1d;border-radius:12px;padding:18px;}";
+    html += ".label{color:#aaa;font-size:14px;}";
+    html += ".value{font-size:26px;color:#00ffff;margin-top:6px;}";
+    html += ".forecast{overflow-x:auto;}";
+    html += "table{width:100%;border-collapse:collapse;background:#1d1d1d;border-radius:12px;overflow:hidden;}";
+    html += "th,td{padding:12px;text-align:center;border-bottom:1px solid #333;}";
+    html += "th{color:#00ffff;}";
+    html += "a{color:#00ffff;text-decoration:none;margin-right:18px;}";
+    html += ".nav{margin-bottom:20px;line-height:2;}";
+    html += "</style>";
+
+    html += "</head>";
+    html += "<body>";
+
+    html += "<div class='container'>";
+
+    // Navigation
+    html += "<div class='nav'>";
+    html += "<a href='/'>Dashboard</a>";
+    html += "<a href='/weather'>Weather</a>";
+    html += "<a href='/tuya'>Tuya</a>";
+    html += "<a href='/settings'>Settings</a>";
+    html += "<a href='/api'>API</a>";
+    html += "</div>";
+
+    html += "<h1>ORA — Weather</h1>";
+
+    if (weather == nullptr)
+    {
+        html += "<div class='card'>";
+        html += "Weather service unavailable.";
+        html += "</div>";
+        html += "</div></body></html>";
+
+        server.send(200, "text/html; charset=UTF-8", html);
+        return;
+    }
+
+    const WeatherData& data = weather->getData();
+
+    if (!data.valid)
+    {
+        html += "<div class='card'>";
+        html += "Weather data is not available.";
+        html += "</div>";
+        html += "</div></body></html>";
+
+        server.send(200, "text/html; charset=UTF-8", html);
+        return;
+    }
+
+    // --------------------------------------------------------
+    // CURRENT WEATHER
+    // --------------------------------------------------------
+
+    html += "<h2>Current Weather</h2>";
+
+    html += "<div class='grid'>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Temperature</div>";
+    html += "<div class='value'>";
+    html += String(data.temperature, 1);
+    html += " &deg;C</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Feels like</div>";
+    html += "<div class='value'>";
+    html += String(data.apparentTemperature, 1);
+    html += " &deg;C</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Humidity</div>";
+    html += "<div class='value'>";
+    html += String(data.humidity, 0);
+    html += " %</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Pressure</div>";
+    html += "<div class='value'>";
+    html += String(data.pressure, 1);
+    html += " hPa</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Wind</div>";
+    html += "<div class='value'>";
+    html += String(data.windSpeed, 1);
+    html += " km/h</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Wind direction</div>";
+    html += "<div class='value'>";
+    html += String(data.windDirection, 0);
+    html += " &deg;</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Wind gusts</div>";
+    html += "<div class='value'>";
+    html += String(data.windGusts, 1);
+    html += " km/h</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Cloud cover</div>";
+    html += "<div class='value'>";
+    html += String(data.cloudCover, 0);
+    html += " %</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Precipitation</div>";
+    html += "<div class='value'>";
+    html += String(data.precipitation, 1);
+    html += " mm</div>";
+    html += "</div>";
+
+    html += "<div class='card'>";
+    html += "<div class='label'>Rain</div>";
+    html += "<div class='value'>";
+    html += String(data.rain, 1);
+    html += " mm</div>";
+    html += "</div>";
+
+    html += "</div>";
+
+    // --------------------------------------------------------
+    // 7 DAY FORECAST
+    // --------------------------------------------------------
+
+    html += "<h2>7 Day Forecast</h2>";
+
+    html += "<div class='forecast'>";
+
+    html += "<table>";
+
+    html += "<tr>";
+    html += "<th>Date</th>";
+    html += "<th>Min</th>";
+    html += "<th>Max</th>";
+    html += "<th>Rain</th>";
+    html += "<th>Chance</th>";
+    html += "<th>Wind</th>";
+    html += "<th>Code</th>";
+    html += "</tr>";
+
+    for (int i = 0; i < WeatherService::FORECAST_DAYS; i++)
+    {
+        const DailyWeather& day = weather->getDaily(i);
+
+        html += "<tr>";
+
+        html += "<td>";
+        html += day.date;
+        html += "</td>";
+
+        html += "<td>";
+        html += String(day.temperatureMin, 1);
+        html += " &deg;C</td>";
+
+        html += "<td>";
+        html += String(day.temperatureMax, 1);
+        html += " &deg;C</td>";
+
+        html += "<td>";
+        html += String(day.precipitationSum, 1);
+        html += " mm</td>";
+
+        html += "<td>";
+        html += String(day.precipitationProbability);
+        html += " %</td>";
+
+        html += "<td>";
+        html += String(day.windSpeedMax, 1);
+        html += " km/h</td>";
+
+        html += "<td>";
+        html += String(day.weatherCode);
+        html += "</td>";
+
+        html += "</tr>";
+    }
+
+    html += "</table>";
+
+    html += "</div>";
+
+    // --------------------------------------------------------
+    // FOOTER
+    // --------------------------------------------------------
+
+    html += "<p style='margin-top:25px;color:#777;'>";
+    html += "Data provided by Open-Meteo";
+    html += "</p>";
+
+    html += "</div>";
+
+    html += "</body>";
+    html += "</html>";
+
+    server.send(200, "text/html; charset=UTF-8", html);
 }
 void WebServerManager::handleSettingsSave()
 {
@@ -385,7 +700,25 @@ void WebServerManager::handleSettingsSave()
         localSensorsDisplayTime = seconds * 1000UL;
         preferences.putULong("localTime", localSensorsDisplayTime);
     }
+if (server.hasArg("screensaver"))
+{
+    settingScreenSaver = server.arg("screensaver") == "1";
+    preferences.putBool("screensaver", settingScreenSaver);
+}
 
+if (server.hasArg("screenSaverMin"))
+{
+    unsigned long minutes = server.arg("screenSaverMin").toInt();
+
+    if (minutes < 1)
+        minutes = 1;
+
+    if (minutes > 60)
+        minutes = 60;
+
+    screenSaverDelay = minutes * 60UL * 1000UL;
+    preferences.putULong("screenSaverMin", minutes);
+}
     server.sendHeader("Location", "/settings");
     server.send(303);
 }

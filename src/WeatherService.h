@@ -5,12 +5,40 @@
 
 struct WeatherData
 {
+    // Current weather
     float temperature;
     float humidity;
     float pressure;
     float windSpeed;
+    float windDirection;
+    float windGusts;
+    float precipitation;
+    float rain;
+    float cloudCover;
+    float apparentTemperature;
+
     int weatherCode;
+    bool isDay;
+
     bool valid;
+};
+
+struct DailyWeather
+{
+    String date;
+
+    float temperatureMin;
+    float temperatureMax;
+
+    float precipitationSum;
+    int precipitationProbability;
+
+    float windSpeedMax;
+
+    String sunrise;
+    String sunset;
+
+    int weatherCode;
 };
 
 class WeatherService
@@ -19,11 +47,16 @@ public:
     WeatherService();
 
     bool update();
+
     const WeatherData& getData() const;
-   
+
+    const DailyWeather& getDaily(int index) const;
+
+    static const int FORECAST_DAYS = 7;
 
 private:
     WeatherData data;
+    DailyWeather daily[FORECAST_DAYS];
 };
 
 #endif

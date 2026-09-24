@@ -22,7 +22,9 @@ private:
     void handleSettings();
     void handleApiStatus();
     void handleApiPage();
+    void handleTuya();
     void handleSettingsSave();
+    void handleWeather();
 };
 
 #endif

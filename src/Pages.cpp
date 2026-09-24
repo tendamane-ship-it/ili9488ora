@@ -6,6 +6,8 @@ extern bool settingDate;
 extern bool settingPIR;
 extern bool settingWeather;
 extern bool settingLightSensor;
+extern bool settingScreenSaver;
+extern unsigned long screenSaverDelay;
 
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
@@ -44,14 +46,8 @@ String getDashboardPage()
 
     // HEADER
     html += ".header{";
-    html += "display:flex;";
-    html += "justify-content:space-between;";
-    html += "align-items:center;";
-    html += "margin-bottom:18px;";
-    html += "flex-wrap:wrap;";
-    html += "gap:12px;";
-    html += "}";
-
+html += "margin-bottom:20px;";
+html += "}";
     html += ".logo{";
     html += "font-size:30px;";
     html += "font-weight:bold;";
@@ -273,30 +269,15 @@ String getDashboardPage()
     html += "<div class='container'>";
 
     // ============================================================
-    // HEADER
-    // ============================================================
-
-    html += "<div class='header'>";
-
-    html += "<div class='logo'>ORA e Lapit</div>";
-
-    html += "<div class='status'>";
-    html += "<span class='dot' id='statusDot'></span>";
-    html += "<span id='statusText'>ONLINE</span>";
-    html += "</div>";
-
-    html += "</div>";
-
-    // ============================================================
     // NAVIGATION
     // ============================================================
 
     html += "<div class='nav'>";
-
-    html += "<a class='active' href='/'>Dashboard</a>";
-    html += "<a href='/settings'>Settings</a>";
-    html += "<a href='/api'>API Status</a>";
-
+html += "<a class='active' href='/'>Dashboard</a>";
+html += "<a href='/weather'>Weather</a>";
+html += "<a href='/tuya'>Tuya</a>";
+html += "<a href='/settings'>Settings</a>";
+html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
     // ============================================================
@@ -629,18 +610,12 @@ String getDashboardPage()
 String getSettingsPage()
 {
     String html;
+   
 
     html += "<!DOCTYPE html>";
     html += "<html lang='en'>";
 
-    html += "<head>";
 
-    html += "<meta charset='UTF-8'>";
-
-    html += "<meta name='viewport' ";
-    html += "content='width=device-width, initial-scale=1.0'>";
-
-    html += "<title>ORA Settings</title>";
 
     html += "<style>";
 
@@ -660,11 +635,12 @@ String getSettingsPage()
     html += "}";
 
     html += ".header{";
-    html += "display:flex;";
-    html += "justify-content:space-between;";
-    html += "align-items:center;";
-    html += "margin-bottom:20px;";
-    html += "}";
+html += "margin-bottom:20px;";
+html += "}";
+
+html += ".logo{";
+html += "margin-bottom:14px;";
+html += "}";
 
     html += ".logo{";
     html += "font-size:30px;";
@@ -787,6 +763,35 @@ String getSettingsPage()
     html += "}";
 
     html += "}";
+    html += ".nav{";
+html += "display:flex;";
+html += "gap:8px;";
+html += "width:100%;";
+html += "flex-wrap:wrap;";
+html += "margin-top:12px;";
+html += "margin-bottom:20px;";
+html += "justify-content:flex-start;";
+html += "}";
+
+html += ".nav a{";
+html += "text-decoration:none;";
+html += "color:#9aa7b3;";
+html += "background:#151b23;";
+html += "border:1px solid #202b38;";
+html += "padding:9px 15px;";
+html += "border-radius:8px;";
+html += "font-size:14px;";
+html += "}";
+
+html += ".nav a:hover{";
+html += "color:#00eaff;";
+html += "border-color:#00eaff;";
+html += "}";
+
+html += ".nav a.active{";
+html += "color:#00eaff;";
+html += "border-color:#00eaff;";
+html += "}";
 
     html += "</style>";
 
@@ -794,20 +799,25 @@ String getSettingsPage()
 
     html += "<body>";
 
-    html += "<div class='container'>";
+html += "<div class='container'>";
 
-    // --------------------------------------------------------
-    // HEADER
-    // --------------------------------------------------------
+html += "<div class='header'>";
 
-    html += "<div class='header'>";
+html += "<div class='logo'>ORA</div>";
 
-    html += "<div class='logo'>ORA</div>";
+html += "<div class='nav'>";
+html += "<a href='/'>Dashboard</a>";
+html += "<a href='/weather'>Weather</a>";
+html += "<a href='/tuya'>Tuya</a>";
+html += "<a class='active' href='/settings'>Settings</a>";
+html += "<a href='/api'>API Status</a>";
+html += "</div>";
 
-    html += "<a class='back' href='/'>Dashboard</a>";
+html += "</div>";
 
-    html += "</div>";
 
+
+    
     // --------------------------------------------------------
     // TIME / DISPLAY
     // --------------------------------------------------------
@@ -999,10 +1009,53 @@ String getSettingsPage()
   // --------------------------------------------------------
 // SYSTEM
 // --------------------------------------------------------
-
 html += "<div class='card'>";
 
 html += "<h2>System</h2>";
+
+// Screensaver
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Screensaver</div>";
+html += "<div class='description'>Enable or disable the screen saver</div>";
+html += "</div>";
+
+html += "<div class='control'>";
+html += "<select name='screensaver'>";
+
+if (settingScreenSaver)
+    html += "<option value='1' selected>ON</option>";
+else
+    html += "<option value='1'>ON</option>";
+
+if (!settingScreenSaver)
+    html += "<option value='0' selected>OFF</option>";
+else
+    html += "<option value='0'>OFF</option>";
+
+html += "</select>";
+html += "</div>";
+
+html += "</div>";
+
+// Screensaver timeout
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Screensaver timeout</div>";
+html += "<div class='description'>Minutes before the screen saver starts</div>";
+html += "</div>";
+
+html += "<div class='control'>";
+html += "<input type='number' name='screenSaverMin' min='1' max='60' value='";
+
+html += String(screenSaverDelay / (60UL * 1000UL));
+
+html += "'>";
+html += "</div>";
+
+html += "</div>";
 
 html += "<div class='setting'>";
 

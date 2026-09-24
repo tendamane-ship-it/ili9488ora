@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include "WebServerManager.h"
+#include "TuyaService.h"
 #include "Pages.h"
 #include "WeatherService.h"
 #include "Sensors.h"
@@ -19,6 +20,9 @@ const char* NTP_SERVER = "pool.ntp.org";
 TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
 WebServerManager webServer;
+TuyaService tuyaService;
+unsigned long lastTuyaUpdate = 0;
+const unsigned long TUYA_UPDATE_INTERVAL = 60UL * 1000UL;
 WeatherService weather;
 int pirState = LOW;
 // ============================================================
@@ -92,7 +96,8 @@ const unsigned long WELCOME_DELAY = 30UL * 60UL * 1000UL;
 bool screenSaverActive = false;
 unsigned long screenSaverStart = 0;
 bool screenSaverPIRArmed = false;
-const unsigned long SCREEN_SAVER_DELAY = 20UL * 1000UL;
+bool settingScreenSaver = true;
+unsigned long screenSaverDelay = 15UL * 60UL * 1000UL;
 const unsigned long HEART_INTERVAL = 1200UL;
 TFT_eSprite heartSprite = TFT_eSprite(&tft);
 bool heartSpriteReady = false;
@@ -618,27 +623,10 @@ void drawMenuIcon()
         38,
         COLOR_BG
     );
-    tft.drawLine(
-        18,
-        41,
-        48,
-        41,
-        TFT_WHITE
-    );
-    tft.drawLine(
-        18,
-        49,
-        48,
-        49,
-        TFT_WHITE
-    );
-    tft.drawLine(
-        18,
-        57,
-        48,
-        57,
-        TFT_WHITE
-    );
+
+tft.drawLine(5, 41, 35, 41, TFT_WHITE);
+tft.drawLine(5, 49, 35, 49, TFT_WHITE);
+tft.drawLine(5, 57, 35, 57, TFT_WHITE);
 }
 // ============================================================
 // WEATHER DISPLAY
@@ -1062,8 +1050,18 @@ else
 {
     Serial.println("PIR disabled by settings");
 }
-    initPIR();
-lastMotionTime = millis();
+settingScreenSaver = preferences.getBool("screensaver", true);
+
+unsigned long screenSaverMinutes =
+    preferences.getULong("screenSaverMin", 15UL);
+
+if (screenSaverMinutes < 1)
+    screenSaverMinutes = 1;
+
+if (screenSaverMinutes > 60)
+    screenSaverMinutes = 60;
+
+screenSaverDelay = screenSaverMinutes * 60UL * 1000UL;
 // --------------------------------------------------------
 // SENSORS
 // --------------------------------------------------------
@@ -1119,6 +1117,7 @@ Serial.println("========================");
         Serial.println(WiFi.localIP());
         webServer.setWeatherService(&weather);
         webServer.begin();
+        tuyaService.begin();
         // ----------------------------------------------------
         // NTP
         // ----------------------------------------------------
@@ -1197,46 +1196,69 @@ else
 {
     pirState = LOW;
 }
+
 // --------------------------------------------------------
 // SCREEN SAVER WAKE
 // --------------------------------------------------------
+
 if (screenSaverActive)
 {
     // Fillimisht presim që PIR të kthehet LOW.
-    // Kjo shmang wake të menjëhershëm kur screensaver-i aktivizohet
-    // ndërkohë që PIR është ende HIGH.
-   if (screenSaverActive && pirState == HIGH)
+    // Vetëm pas LOW PIR-i armatoset për wake.
+    if (!screenSaverPIRArmed)
+    {
+        if (pirState == LOW)
+        {
+            screenSaverPIRArmed = true;
+            Serial.println("SCREEN SAVER: PIR ARMED");
+        }
+    }
+    else if (pirState == HIGH && pirLastState == LOW)
     {
         unsigned long now = millis();
+
         screenSaverActive = false;
+
         Serial.println("PIR: MOTION DETECTED");
         Serial.println("SCREEN SAVER: WAKE");
+
         // Injoro PIR per 2 sekonda pas wake
         pirIgnoreUntil = millis() + 2000;
+
         // Pastro ekranin
         tft.fillScreen(COLOR_BG);
+
         // Detyro ridizenjimin e shifrave
         lastDigits[0] = -1;
         lastDigits[1] = -1;
         lastDigits[2] = -1;
         lastDigits[3] = -1;
+
         // Rifresko oren dhe daten
         if (getLocalTime(&timeinfo, 1000))
         {
             updateClock(timeinfo);
-if (settingDate)
-{
-    updateDate(timeinfo);
-}
+
+            if (settingDate)
+            {
+                updateDate(timeinfo);
+            }
+
             bool visible = (timeinfo.tm_sec % 2 == 0);
             drawColon(visible);
         }
+
         // Rifresko elementet e ekranit
+        lastWiFiState = false;
         updateWiFiIndicator();
         updateLowerPanel();
+        drawMenuIcon();
+
         lastMotionTime = now;
-        // Mos e konsidero kete HIGH si nje levizje te re
+
+        // Ruaj gjendjen aktuale te PIR
         pirLastState = HIGH;
+
         return;
     }
 }
@@ -1263,8 +1285,8 @@ pirLastState = pirState;
     // --------------------------------------------------------
     // SCREEN SAVER
     // --------------------------------------------------------
-    if (!screenSaverActive &&
-        millis() - lastMotionTime >= SCREEN_SAVER_DELAY)
+    if (settingScreenSaver &&
+    millis() - lastMotionTime >= screenSaverDelay)
     {
         screenSaverActive = true;
         screenSaverStart = millis();
@@ -1310,7 +1332,7 @@ pirLastState = pirState;
             }
         }
         // ----------------------------------------------------
-        // WIFI INDICATOR
+        // WIFI   INDICATOR
         // ----------------------------------------------------
         updateWiFiIndicator();
         // ----------------------------------------------------
@@ -1329,6 +1351,14 @@ pirLastState = pirState;
         // ----------------------------------------------------
         updateLowerPanel();
     }
+    // --------------------------------------------------------
+// TUYA TH01
+// --------------------------------------------------------
+if (millis() - lastTuyaUpdate >= TUYA_UPDATE_INTERVAL)
+{
+    lastTuyaUpdate = millis();
+    tuyaService.update();
+}
     // --------------------------------------------------------
     // WEB SERVER
     // --------------------------------------------------------
