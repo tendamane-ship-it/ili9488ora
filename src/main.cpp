@@ -70,13 +70,6 @@ const char* months[] = {
     "Nentor",
     "Dhjetor"
 };
-#define DIGIT_W       84
-#define DIGIT_H       130
-#define SEG_THICK     13
-#define DIGIT_GAP     10
-#define CLOCK_Y       25
-const int COLON_X = 232;
-
 // ============================================================
 // CLOCK GEOMETRY
 // ============================================================
@@ -85,6 +78,7 @@ const int COLON_X = 232;
 #define SEG_THICK     13
 #define DIGIT_GAP     10
 #define CLOCK_Y       25
+const int COLON_X = 232;
 // ============================================================
 // 7-SEGMENT DIGIT MAP
 // ============================================================
@@ -999,17 +993,6 @@ else
 {
     Serial.println("PIR disabled by settings");
 }
-settingScreenSaver = preferences.getBool("screensaver", true);
-
-unsigned long screenSaverMinutes =
-    preferences.getULong("screenSaverMin", 15UL);
-
-if (screenSaverMinutes < 1)
-    screenSaverMinutes = 1;
-
-if (screenSaverMinutes > 60)
-    screenSaverMinutes = 60;
-
 screenSaverDelay = screenSaverMinutes * 60UL * 1000UL;
 // --------------------------------------------------------
 // SENSORS
@@ -1258,7 +1241,10 @@ pirLastState = pirState;
         if (getLocalTime(&timeinfo, 1000))
         {
             updateClock(timeinfo);
-            updateDate(timeinfo);
+            if (settingDate)
+        {
+         updateDate(timeinfo);
+        }
             static int lastSecond = -1;
             if (timeinfo.tm_sec != lastSecond)
             {
