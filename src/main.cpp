@@ -648,6 +648,12 @@ void updateWeatherDisplay()
         75,
         COLOR_BG
     );
+     // Titulli
+tft.setTextColor(TFT_WHITE, COLOR_BG);
+tft.setTextFont(2);
+tft.setTextDatum(MC_DATUM);
+tft.drawString("Moti jashte", 277, WEATHER_Y + 7);
+tft.setTextDatum(TL_DATUM);
     // Weather icon
     drawWeatherIcon();
     tft.setTextColor(
@@ -668,7 +674,7 @@ void updateWeatherDisplay()
     tft.setTextColor(TFT_ORANGE, COLOR_BG);
     tft.setCursor(
         85,
-        WEATHER_Y + 8
+        WEATHER_Y + 25
     );
     tft.print(tempText);
     // --------------------------------------------------------
@@ -684,7 +690,7 @@ void updateWeatherDisplay()
     tft.setTextColor(TFT_CYAN, COLOR_BG);
     tft.setCursor(
         85,
-        WEATHER_Y + 40
+        WEATHER_Y + 52
     );
     tft.print(humidityText);
     // --------------------------------------------------------
@@ -700,7 +706,7 @@ void updateWeatherDisplay()
     tft.setTextColor(TFT_GREEN, COLOR_BG);
     tft.setCursor(
         285,
-        WEATHER_Y + 8
+        WEATHER_Y + 25
     );
     tft.print(windText);
     // --------------------------------------------------------
@@ -716,7 +722,7 @@ void updateWeatherDisplay()
      tft.setTextColor(TFT_MAGENTA, COLOR_BG);
     tft.setCursor(
         285,
-        WEATHER_Y + 40
+        WEATHER_Y + 52
     );
     tft.print(pressureText);
 }
@@ -726,16 +732,32 @@ void updateWeatherDisplay()
 // ============================================================
 void updateLocalSensorsDisplay()
 {
-    tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
-    tft.setTextFont(2);
+    tft.fillRect(
+        75,
+        WEATHER_Y,
+        405,
+        75,
+        COLOR_BG
+    );
+
     // Titulli
     tft.setTextColor(TFT_WHITE, COLOR_BG);
-    tft.setCursor(75, WEATHER_Y);
-    tft.print("Sensoret lokale");
+    tft.setTextFont(2);
+    tft.setTextDatum(MC_DATUM);
+    tft.drawString(
+        "Sensoret lokale",
+        277,
+        WEATHER_Y + 7
+    );
+    tft.setTextDatum(TL_DATUM);
+
+    // Madhesia e te dhenave
     tft.setTextFont(4);
+
     // Temperature
     tft.setTextColor(TFT_ORANGE, COLOR_BG);
     tft.setCursor(85, WEATHER_Y + 25);
+
     if (bme680OK)
     {
         tft.print("Temp: ");
@@ -746,9 +768,11 @@ void updateLocalSensorsDisplay()
     {
         tft.print("TEMP: --.- C");
     }
+
     // Humidity
     tft.setTextColor(TFT_CYAN, COLOR_BG);
     tft.setCursor(285, WEATHER_Y + 25);
+
     if (bme680OK)
     {
         tft.print("Lag: ");
@@ -759,9 +783,11 @@ void updateLocalSensorsDisplay()
     {
         tft.print("Lag: -- %");
     }
+
     // Lux
     tft.setTextColor(TFT_YELLOW, COLOR_BG);
     tft.setCursor(85, WEATHER_Y + 52);
+
     if (bh1750OK)
     {
         tft.print("LUX: ");
@@ -771,9 +797,11 @@ void updateLocalSensorsDisplay()
     {
         tft.print("LUX: ----");
     }
+
     // Air quality
     tft.setTextColor(TFT_GREEN, COLOR_BG);
     tft.setCursor(285, WEATHER_Y + 52);
+
     if (bme680OK)
     {
         if (!airBaselineReady)
@@ -783,51 +811,18 @@ void updateLocalSensorsDisplay()
         else
         {
             float ratio = bmeGas / airBaseline;
+
             if (ratio >= 0.80)
-            {
                 tft.print("AIR: GOOD");
-            }
             else if (ratio >= 0.50)
-            {
                 tft.print("AIR: FAIR");
-            }
             else
-            {
                 tft.print("AIR: POOR");
-            }
         }
     }
     else
     {
         tft.print("Ajer: --");
-    }
-}
-
-// ============================================================
-// LOWER PANEL SLIDE
-// ============================================================
-void updateLowerPanel()
-{
-    unsigned long displayTime;
-    if (showingLocalSensors)
-    {
-        displayTime = localSensorsDisplayTime;
-    }
-    else
-    {
-        displayTime = weatherDisplayTime;
-    }
-    if (millis() - lastLowerPanelChange < displayTime)
-        return;
-    lastLowerPanelChange = millis();
-    showingLocalSensors = !showingLocalSensors;
-    if (showingLocalSensors)
-    {
-        updateLocalSensorsDisplay();
-    }
-    else
-    {
-        updateWeatherDisplay();
     }
 }
 // ============================================================
@@ -904,7 +899,7 @@ Serial.println("========================");
         Serial.println(WiFi.localIP());
         webServer.setWeatherService(&weather);
         webServer.begin();
-        tuyaService.begin();
+        
         // ----------------------------------------------------
         // NTP
         // ----------------------------------------------------
@@ -922,6 +917,7 @@ Serial.println("========================");
             if (getLocalTime(&timeinfo, 1000))
             {
                 Serial.println("Time synchronized");
+             lastTuyaUpdate = millis();   
                 Serial.printf(
                     "Current time: %02d:%02d:%02d\n",
                     timeinfo.tm_hour,
@@ -966,6 +962,51 @@ drawColon(true);
     drawWeather();
     updateWeatherDisplay();
     lastLowerPanelChange = millis();
+}
+// ============================================================
+// LOWER PANEL UPDATE
+// ============================================================
+void updateLowerPanel()
+{
+    if (settingWeather && settingLightSensor)
+    {
+        unsigned long displayTime =
+            showingLocalSensors
+                ? localSensorsDisplayTime
+                : weatherDisplayTime;
+
+        if (millis() - lastLowerPanelChange >= displayTime)
+        {
+            lastLowerPanelChange = millis();
+
+            showingLocalSensors = !showingLocalSensors;
+
+            if (showingLocalSensors)
+            {
+                updateLocalSensorsDisplay();
+            }
+            else
+            {
+                updateWeatherDisplay();
+            }
+        }
+    }
+    else if (settingWeather)
+    {
+        if (showingLocalSensors)
+        {
+            showingLocalSensors = false;
+            updateWeatherDisplay();
+        }
+    }
+    else if (settingLightSensor)
+    {
+        if (!showingLocalSensors)
+        {
+            showingLocalSensors = true;
+            updateLocalSensorsDisplay();
+        }
+    }
 }
 // ============================================================
 // LOOP
@@ -1021,8 +1062,10 @@ if (screenSaverActive)
         lastDigits[2] = -1;
         lastDigits[3] = -1;
 
-        // Rifresko oren dhe daten
-        if (getLocalTime(&timeinfo, 1000))
+       // Force date redraw after screen saver
+          lastDay = -1;
+
+         if (getLocalTime(&timeinfo, 1000))
         {
             updateClock(timeinfo);
 
@@ -1072,7 +1115,8 @@ pirLastState = pirState;
     // --------------------------------------------------------
     // SCREEN SAVER
     // --------------------------------------------------------
-    if (settingScreenSaver &&
+   if (!screenSaverActive &&
+    settingScreenSaver &&
     millis() - lastMotionTime >= screenSaverDelay)
     {
         screenSaverActive = true;
@@ -1139,9 +1183,9 @@ pirLastState = pirState;
         // ----------------------------------------------------
         updateLowerPanel();
     }
-    // --------------------------------------------------------
-// TUYA TH01
-// --------------------------------------------------------
+     // --------------------------------------------------------
+     // TUYA TH01
+     // --------------------------------------------------------
 if (millis() - lastTuyaUpdate >= TUYA_UPDATE_INTERVAL)
 {
     lastTuyaUpdate = millis();

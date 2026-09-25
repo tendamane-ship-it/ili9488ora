@@ -4,7 +4,6 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
-// Preferences
 extern Preferences preferences;
 
 // General settings

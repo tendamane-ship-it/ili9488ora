@@ -5,6 +5,100 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <mbedtls/md.h>
+#include <time.h>
+
+// ============================================================
+// TUYA SIGNATURE HELPERS
+// ============================================================
+
+String sha256Hex(const String& data)
+{
+    byte hash[32];
+
+    mbedtls_md_context_t ctx;
+    mbedtls_md_init(&ctx);
+
+    mbedtls_md_setup(
+        &ctx,
+        mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
+        0
+    );
+
+    mbedtls_md_starts(&ctx);
+
+    mbedtls_md_update(
+        &ctx,
+        (const unsigned char*)data.c_str(),
+        data.length()
+    );
+
+    mbedtls_md_finish(&ctx, hash);
+    mbedtls_md_free(&ctx);
+
+    String result = "";
+
+    for (int i = 0; i < 32; i++)
+    {
+        if (hash[i] < 16)
+            result += "0";
+
+        result += String(hash[i], HEX);
+    }
+
+    result.toLowerCase();
+
+    return result;
+}
+
+String hmacSha256Hex(
+    const String& message,
+    const char* secret
+)
+{
+    byte hash[32];
+
+    mbedtls_md_context_t ctx;
+    mbedtls_md_init(&ctx);
+
+    mbedtls_md_setup(
+        &ctx,
+        mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
+        1
+    );
+
+    mbedtls_md_hmac_starts(
+        &ctx,
+        (const unsigned char*)secret,
+        strlen(secret)
+    );
+
+    mbedtls_md_hmac_update(
+        &ctx,
+        (const unsigned char*)message.c_str(),
+        message.length()
+    );
+
+    mbedtls_md_hmac_finish(&ctx, hash);
+    mbedtls_md_free(&ctx);
+
+    String result = "";
+
+    for (int i = 0; i < 32; i++)
+    {
+        if (hash[i] < 16)
+            result += "0";
+
+        result += String(hash[i], HEX);
+    }
+
+    result.toUpperCase();
+
+    return result;
+}
+
+// ============================================================
+// CONSTRUCTOR
+// ============================================================
 
 TuyaService::TuyaService()
 {
@@ -13,6 +107,10 @@ TuyaService::TuyaService()
     battery = 0;
     online = false;
 }
+
+// ============================================================
+// BEGIN
+// ============================================================
 
 bool TuyaService::begin()
 {
@@ -30,75 +128,108 @@ bool TuyaService::begin()
     return update();
 }
 
+// ============================================================
+// GET ACCESS TOKEN
+// ============================================================
+
 String TuyaService::getAccessToken()
 {
     HTTPClient http;
 
-    String url = String("https://") +
-                 TUYA_API_HOST +
-                 "/v1.0/token?grant_type=1";
+    const char* tokenPath =
+        "/v1.0/token?grant_type=1";
 
-    unsigned long t = millis();
+    String url =
+        String("https://") +
+        TUYA_API_HOST +
+        tokenPath;
 
-    String timestamp = String((unsigned long)time(nullptr) * 1000ULL);
+    // --------------------------------------------------------
+    // Timestamp
+    // --------------------------------------------------------
 
-    String message = String(TUYA_CLIENT_ID) + timestamp;
+    uint64_t timestampValue =
+        (uint64_t)time(nullptr) * 1000ULL;
 
-    byte hash[32];
+    String timestamp =
+        String(timestampValue);
 
-    mbedtls_md_context_t ctx;
-    mbedtls_md_init(&ctx);
+    // --------------------------------------------------------
+    // SHA256 of empty GET body
+    // --------------------------------------------------------
 
-    mbedtls_md_setup(
-        &ctx,
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
-        1
-    );
+    const String contentSha256 =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
-    mbedtls_md_hmac_starts(
-        &ctx,
-        (const unsigned char*)TUYA_CLIENT_SECRET,
-        strlen(TUYA_CLIENT_SECRET)
-    );
+    // --------------------------------------------------------
+    // Tuya stringToSign
+    // --------------------------------------------------------
 
-    mbedtls_md_hmac_update(
-        &ctx,
-        (const unsigned char*)message.c_str(),
-        message.length()
-    );
+    String stringToSign =
+        String("GET\n") +
+        contentSha256 +
+        "\n\n" +
+        tokenPath;
 
-    mbedtls_md_hmac_finish(&ctx, hash);
-    mbedtls_md_free(&ctx);
+    // --------------------------------------------------------
+    // Signature
+    // client_id + timestamp + stringToSign
+    // --------------------------------------------------------
 
-    String sign = "";
+    String signMessage =
+        String(TUYA_CLIENT_ID) +
+        timestamp +
+        stringToSign;
 
-    for (int i = 0; i < 32; i++)
-    {
-        if (hash[i] < 16)
-            sign += "0";
+    String sign =
+        hmacSha256Hex(
+            signMessage,
+            TUYA_CLIENT_SECRET
+        );
 
-        sign += String(hash[i], HEX);
-    }
-
-    sign.toUpperCase();
+    // --------------------------------------------------------
+    // HTTP
+    // --------------------------------------------------------
 
     http.begin(url);
 
-    http.addHeader("client_id", TUYA_CLIENT_ID);
-    http.addHeader("sign", sign);
-    http.addHeader("t", timestamp);
-    http.addHeader("sign_method", "HMAC-SHA256");
+    http.addHeader(
+        "client_id",
+        TUYA_CLIENT_ID
+    );
 
-    Serial.println("Tuya: getting cloud token...");
+    http.addHeader(
+        "sign",
+        sign
+    );
+
+    http.addHeader(
+        "t",
+        timestamp
+    );
+
+    http.addHeader(
+        "sign_method",
+        "HMAC-SHA256"
+    );
+
+    Serial.println(
+        "Tuya: getting cloud token..."
+    );
 
     int httpCode = http.GET();
 
-    String response = http.getString();
+    String response =
+        http.getString();
 
-    Serial.print("Tuya token HTTP: ");
+    Serial.print(
+        "Tuya token HTTP: "
+    );
     Serial.println(httpCode);
 
-    Serial.println("Tuya token response:");
+    Serial.println(
+        "Tuya token response:"
+    );
     Serial.println(response);
 
     http.end();
@@ -108,12 +239,21 @@ String TuyaService::getAccessToken()
 
     JsonDocument doc;
 
-    DeserializationError error = deserializeJson(doc, response);
+    DeserializationError error =
+        deserializeJson(
+            doc,
+            response
+        );
 
     if (error)
     {
-        Serial.print("Tuya JSON error: ");
-        Serial.println(error.c_str());
+        Serial.print(
+            "Tuya JSON error: "
+        );
+        Serial.println(
+            error.c_str()
+        );
+
         return "";
     }
 
@@ -123,6 +263,10 @@ String TuyaService::getAccessToken()
     return doc["result"]["access_token"].as<String>();
 }
 
+// ============================================================
+// UPDATE DEVICE
+// ============================================================
+
 bool TuyaService::update()
 {
     if (WiFi.status() != WL_CONNECTED)
@@ -131,86 +275,132 @@ bool TuyaService::update()
         return false;
     }
 
-    String accessToken = getAccessToken();
+    // --------------------------------------------------------
+    // Get access token
+    // --------------------------------------------------------
+
+    String accessToken =
+        getAccessToken();
 
     if (accessToken.length() == 0)
     {
-        Serial.println("Tuya: failed to get access token");
+        Serial.println(
+            "Tuya: failed to get access token"
+        );
+
         online = false;
         return false;
     }
 
-    HTTPClient http;
+    // --------------------------------------------------------
+    // Device status endpoint
+    // --------------------------------------------------------
 
-    String url = String("https://") +
-                 TUYA_API_HOST +
-                 "/v1.0/iot-03/devices/" +
-                 TUYA_DEVICE_ID +
-                 "/status";
+    String statusPath =
+        String("/v1.0/iot-03/devices/") +
+        TUYA_DEVICE_ID +
+        "/status";
 
-    String timestamp = String((unsigned long)time(nullptr) * 1000ULL);
+    String url =
+        String("https://") +
+        TUYA_API_HOST +
+        statusPath;
 
-    String message =
+    // --------------------------------------------------------
+    // Timestamp
+    // --------------------------------------------------------
+
+    uint64_t timestampValue =
+        (uint64_t)time(nullptr) * 1000ULL;
+
+    String timestamp =
+        String(timestampValue);
+
+    // --------------------------------------------------------
+    // SHA256 of empty GET body
+    // --------------------------------------------------------
+
+    const String contentSha256 =
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+    // --------------------------------------------------------
+    // Tuya stringToSign
+    // --------------------------------------------------------
+
+    String stringToSign =
+        String("GET\n") +
+        contentSha256 +
+        "\n\n" +
+        statusPath;
+
+    // --------------------------------------------------------
+    // Signature
+    // client_id + access_token + timestamp + stringToSign
+    // --------------------------------------------------------
+
+    String signMessage =
         String(TUYA_CLIENT_ID) +
         accessToken +
-        timestamp;
+        timestamp +
+        stringToSign;
 
-    byte hash[32];
+    String sign =
+        hmacSha256Hex(
+            signMessage,
+            TUYA_CLIENT_SECRET
+        );
 
-    mbedtls_md_context_t ctx;
-    mbedtls_md_init(&ctx);
+    // --------------------------------------------------------
+    // HTTP
+    // --------------------------------------------------------
 
-    mbedtls_md_setup(
-        &ctx,
-        mbedtls_md_info_from_type(MBEDTLS_MD_SHA256),
-        1
-    );
-
-    mbedtls_md_hmac_starts(
-        &ctx,
-        (const unsigned char*)TUYA_CLIENT_SECRET,
-        strlen(TUYA_CLIENT_SECRET)
-    );
-
-    mbedtls_md_hmac_update(
-        &ctx,
-        (const unsigned char*)message.c_str(),
-        message.length()
-    );
-
-    mbedtls_md_hmac_finish(&ctx, hash);
-    mbedtls_md_free(&ctx);
-
-    String sign = "";
-
-    for (int i = 0; i < 32; i++)
-    {
-        if (hash[i] < 16)
-            sign += "0";
-
-        sign += String(hash[i], HEX);
-    }
-
-    sign.toUpperCase();
+    HTTPClient http;
 
     http.begin(url);
 
-    http.addHeader("client_id", TUYA_CLIENT_ID);
-    http.addHeader("access_token", accessToken);
-    http.addHeader("sign", sign);
-    http.addHeader("t", timestamp);
-    http.addHeader("sign_method", "HMAC-SHA256");
+    http.addHeader(
+        "client_id",
+        TUYA_CLIENT_ID
+    );
 
-    Serial.println("Tuya: getting device status...");
+    http.addHeader(
+        "access_token",
+        accessToken
+    );
 
-    int httpCode = http.GET();
+    http.addHeader(
+        "sign",
+        sign
+    );
 
-    String response = http.getString();
+    http.addHeader(
+        "t",
+        timestamp
+    );
 
-    Serial.print("Tuya status HTTP: ");
+    http.addHeader(
+        "sign_method",
+        "HMAC-SHA256"
+    );
+
+    Serial.println(
+        "Tuya: getting device status..."
+    );
+
+    int httpCode =
+        http.GET();
+
+    String response =
+        http.getString();
+
+    Serial.print(
+        "Tuya status HTTP: "
+    );
     Serial.println(httpCode);
 
-    Serial.println("Tuya status response:");
+    Serial.println(
+        "Tuya status response:"
+    );
     Serial.println(response);
 
     http.end();
@@ -223,12 +413,21 @@ bool TuyaService::update()
 
     JsonDocument doc;
 
-    DeserializationError error = deserializeJson(doc, response);
+    DeserializationError error =
+        deserializeJson(
+            doc,
+            response
+        );
 
     if (error)
     {
-        Serial.print("Tuya JSON error: ");
-        Serial.println(error.c_str());
+        Serial.print(
+            "Tuya JSON error: "
+        );
+        Serial.println(
+            error.c_str()
+        );
+
         online = false;
         return false;
     }
@@ -239,47 +438,120 @@ bool TuyaService::update()
         return false;
     }
 
-    JsonArray result = doc["result"].as<JsonArray>();
+    // --------------------------------------------------------
+    // Device status
+    // --------------------------------------------------------
 
-    for (JsonObject item : result)
+    JsonArray result =
+        doc["result"].as<JsonArray>();
+for (JsonObject item : result)
+{
+    const char* code =
+        item["code"];
+
+    if (!code)
+        continue;
+
+    if (
+        strcmp(
+            code,
+            "temp_current"
+        ) == 0
+    )
     {
-        const char* code = item["code"];
-        
-        if (!code)
-            continue;
+        temperature =
+            item["value"].as<float>() /
+            10.0;
+    }
+    else if (
+        strcmp(
+            code,
+            "humidity_value"
+        ) == 0
+    )
+    {
+        humidity =
+            item["value"].as<float>();
+    }
+    else if (
+        strcmp(
+            code,
+            "battery_state"
+        ) == 0
+    )
+    {
+        const char* batteryState =
+            item["value"];
 
-        if (strcmp(code, "va_temperature") == 0)
+        if (batteryState)
         {
-            temperature = item["value"].as<float>() / 10.0;
-        }
-        else if (strcmp(code, "va_humidity") == 0)
-        {
-            humidity = item["value"].as<float>() / 10.0;
-        }
-        else if (strcmp(code, "battery_percentage") == 0)
-        {
-            battery = item["value"].as<int>();
+            if (
+                strcmp(
+                    batteryState,
+                    "high"
+                ) == 0
+            )
+            {
+                battery = 100;
+            }
+            else if (
+                strcmp(
+                    batteryState,
+                    "middle"
+                ) == 0
+            )
+            {
+                battery = 50;
+            }
+            else if (
+                strcmp(
+                    batteryState,
+                    "low"
+                ) == 0
+            )
+            {
+                battery = 20;
+            }
         }
     }
+}
 
     online = true;
 
-    Serial.println("Tuya: device status OK");
+    Serial.println(
+        "Tuya: device status OK"
+    );
 
-    Serial.print("Tuya temperature: ");
-    Serial.print(temperature);
+    Serial.print(
+        "Tuya temperature: "
+    );
+    Serial.print(
+        temperature
+    );
     Serial.println(" C");
 
-    Serial.print("Tuya humidity: ");
-    Serial.print(humidity);
+    Serial.print(
+        "Tuya humidity: "
+    );
+    Serial.print(
+        humidity
+    );
     Serial.println(" %");
 
-    Serial.print("Tuya battery: ");
-    Serial.print(battery);
+    Serial.print(
+        "Tuya battery: "
+    );
+    Serial.print(
+        battery
+    );
     Serial.println(" %");
 
     return true;
 }
+
+// ============================================================
+// GETTERS
+// ============================================================
 
 float TuyaService::getTemperature()
 {
