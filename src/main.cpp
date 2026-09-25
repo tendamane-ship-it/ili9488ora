@@ -5,9 +5,10 @@
 #include "Pages.h"
 #include "WeatherService.h"
 #include "Sensors.h"
+#include "Settings.h"
 #include <TFT_eSPI.h>
 #include <time.h>
-#include <Preferences.h>
+
 // ============================================================
 // WIFI
 // ============================================================
@@ -25,65 +26,7 @@ unsigned long lastTuyaUpdate = 0;
 const unsigned long TUYA_UPDATE_INTERVAL = 60UL * 1000UL;
 WeatherService weather;
 int pirState = LOW;
-// ============================================================
-// SETTINGS
-// ============================================================
-Preferences preferences;
-bool setting24Hour = true;
-bool settingDate = true;
-bool settingWeather = true;
-bool settingLightSensor = true;
-bool settingPIR = true;
-unsigned long localSensorsDisplayTime = 10000UL;
-unsigned long weatherDisplayTime = 10000UL;
-// ============================================================
-// LOAD SETTINGS
-// ============================================================
-void loadSettings()
-{
-    preferences.begin("ora", false);
-    setting24Hour = preferences.getBool(
-        "24hour",
-        true
-    );
-    settingDate = preferences.getBool(
-        "date",
-        true
-    );
-    settingWeather = preferences.getBool(
-        "weather",
-        true
-    );
-    settingLightSensor = preferences.getBool(
-        "light",
-        true
-    );
-    settingPIR = preferences.getBool("pir", true
-    );
-    localSensorsDisplayTime = preferences.getULong("localTime", 10000UL);
-weatherDisplayTime = preferences.getULong("weatherTime", 10000UL);
-    Serial.println("Settings loaded:");
-    Serial.printf(
-        "24H: %s\n",
-        setting24Hour ? "ON" : "OFF"
-    );
-    Serial.printf(
-        "Date: %s\n",
-        settingDate ? "ON" : "OFF"
-    );
-    Serial.printf(
-        "Weather: %s\n",
-        settingWeather ? "ON" : "OFF"
-    );
-    Serial.printf(
-        "Light sensor: %s\n",
-        settingLightSensor ? "ON" : "OFF"
-    );
-    Serial.printf(
-        "PIR: %s\n",
-        settingPIR ? "ON" : "OFF"
-    );
-}
+
 // ============================================================
 // COLORS
 // ============================================================
@@ -96,7 +39,6 @@ const unsigned long WELCOME_DELAY = 30UL * 60UL * 1000UL;
 bool screenSaverActive = false;
 unsigned long screenSaverStart = 0;
 bool screenSaverPIRArmed = false;
-bool settingScreenSaver = true;
 unsigned long screenSaverDelay = 15UL * 60UL * 1000UL;
 const unsigned long HEART_INTERVAL = 1200UL;
 TFT_eSprite heartSprite = TFT_eSprite(&tft);
@@ -134,6 +76,7 @@ const char* months[] = {
 #define DIGIT_GAP     10
 #define CLOCK_Y       25
 const int COLON_X = 232;
+
 // ============================================================
 // CLOCK GEOMETRY
 // ============================================================
@@ -496,6 +439,7 @@ heartSprite.drawLine(
         60
     );
 }
+
 // CLOCK UPDATE
 // ============================================================
 int lastDigits[4] = { -1, -1, -1, -1 };
@@ -526,6 +470,7 @@ void updateClock(struct tm& timeinfo)
         }
     }
 }
+
 // ============================================================
 // DATE
 // ============================================================
@@ -564,6 +509,7 @@ void updateDate(struct tm& timeinfo)
     );
     tft.print(dateText);
 }
+
 // ============================================================
 // WIFI INDICATOR
 // ============================================================
@@ -599,6 +545,7 @@ void updateWiFiIndicator()
         );
     }
 }
+
 // ============================================================
 // WEATHER AREA
 // ============================================================
@@ -925,6 +872,7 @@ void updateWeatherDisplay()
     );
     tft.print(pressureText);
 }
+
 // ============================================================
 // LOCAL SENSORS DISPLAY
 // ============================================================
@@ -1006,6 +954,7 @@ void updateLocalSensorsDisplay()
         tft.print("Ajer: --");
     }
 }
+
 // ============================================================
 // LOWER PANEL SLIDE
 // ============================================================
@@ -1359,7 +1308,7 @@ if (millis() - lastTuyaUpdate >= TUYA_UPDATE_INTERVAL)
     lastTuyaUpdate = millis();
     tuyaService.update();
 }
-    // --------------------------------------------------------
+
     // WEB SERVER
     // --------------------------------------------------------
     webServer.handleClient();
