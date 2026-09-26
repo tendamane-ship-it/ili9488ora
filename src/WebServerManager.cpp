@@ -19,6 +19,9 @@ extern bool bh1750OK;
 extern int pirState;
 extern bool settingScreenSaver;
 extern unsigned long screenSaverDelay;
+extern bool settingNightMode;
+extern float nightSleepLux;
+extern float nightWakeLux;
 
 extern float bmeTemp;
 extern float bmeHumidity;
@@ -718,6 +721,43 @@ if (server.hasArg("screenSaverMin"))
 
     screenSaverDelay = minutes * 60UL * 1000UL;
     preferences.putULong("screenSaverMin", minutes);
+}
+if (server.hasArg("nightMode"))
+{
+    settingNightMode = server.arg("nightMode") == "1";
+    preferences.putBool("nightMode", settingNightMode);
+}
+
+if (server.hasArg("nightSleepLux"))
+{
+    float lux = server.arg("nightSleepLux").toFloat();
+
+    if (lux < 0.0f)
+        lux = 0.0f;
+
+    if (lux > 1000.0f)
+        lux = 1000.0f;
+
+    nightSleepLux = lux;
+    preferences.putFloat("nightSleepLux", nightSleepLux);
+}
+
+if (server.hasArg("nightWakeLux"))
+{
+    float lux = server.arg("nightWakeLux").toFloat();
+
+    if (lux < 0.0f)
+        lux = 0.0f;
+
+    if (lux > 1000.0f)
+        lux = 1000.0f;
+
+    nightWakeLux = lux;
+
+    if (nightWakeLux <= nightSleepLux)
+        nightWakeLux = nightSleepLux + 1.0f;
+
+    preferences.putFloat("nightWakeLux", nightWakeLux);
 }
     server.sendHeader("Location", "/settings");
     server.send(303);

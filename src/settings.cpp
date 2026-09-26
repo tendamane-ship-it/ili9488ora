@@ -17,6 +17,10 @@ unsigned long weatherDisplayTime = 10000UL;
 // Screensaver settings
 bool settingScreenSaver = true;
 unsigned long screenSaverMinutes = 15UL;
+// Night Mode settings
+bool settingNightMode = false;
+float nightSleepLux = 5.0f;
+float nightWakeLux = 20.0f;
 
 void loadSettings()
 {
@@ -46,4 +50,18 @@ void loadSettings()
 
     if (screenSaverMinutes > 60UL)
         screenSaverMinutes = 60UL;
+            settingNightMode =
+        preferences.getBool("nightMode", false);
+
+    nightSleepLux =
+        preferences.getFloat("nightSleepLux", 5.0f);
+
+    nightWakeLux =
+        preferences.getFloat("nightWakeLux", 20.0f);
+
+    if (nightSleepLux < 0.0f)
+        nightSleepLux = 0.0f;
+
+    if (nightWakeLux <= nightSleepLux)
+        nightWakeLux = nightSleepLux + 1.0f;
 }

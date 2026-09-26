@@ -42,6 +42,8 @@ unsigned long screenSaverStart = 0;
 bool screenSaverPIRArmed = false;
 unsigned long screenSaverDelay = 15UL * 60UL * 1000UL;
 const unsigned long HEART_INTERVAL = 1200UL;
+// Night Mode
+bool nightModeActive = false;
 
 // Emrat e diteve ne shqip
 const char* days[] = {
@@ -1527,12 +1529,19 @@ else
 {
     pirState = LOW;
 }
-
+// --------------------------------------------------------
+// SENSOR READ
+// --------------------------------------------------------
+if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
+{
+    lastSensorRead = millis();
+    updateLocalSensors();
+}
 // --------------------------------------------------------
 // SCREEN SAVER WAKE
 // --------------------------------------------------------
 
-if (screenSaverActive)
+if (screenSaverActive && !nightModeActive)
 {
     // Fillimisht presim që PIR të kthehet LOW.
     // Vetëm pas LOW PIR-i armatoset për wake.
@@ -1565,10 +1574,10 @@ if (screenSaverActive)
         lastDigits[2] = -1;
         lastDigits[3] = -1;
 
-       // Force date redraw after screen saver
-          lastDay = -1;
+        // Force date redraw after screen saver
+        lastDay = -1;
 
-         if (getLocalTime(&timeinfo, 1000))
+        if (getLocalTime(&timeinfo, 1000))
         {
             updateClock(timeinfo);
 
@@ -1615,6 +1624,21 @@ if (!screenSaverActive &&
 }
 // Ruaj gjendjen aktuale
 pirLastState = pirState;
+// NIGHT MODE
+// NIGHT MODE
+if (settingNightMode &&
+    bh1750OK &&
+    !nightModeActive &&
+    bh1750Lux < nightSleepLux)
+{
+    nightModeActive = true;
+
+    Serial.println("NIGHT MODE: ACTIVE");
+    Serial.print("Lux: ");
+    Serial.println(bh1750Lux);
+
+    tft.fillScreen(TFT_BLACK);
+}
     // --------------------------------------------------------
     // SCREEN SAVER
     // --------------------------------------------------------
@@ -1629,12 +1653,54 @@ pirLastState = pirState;
         tft.fillScreen(COLOR_BG);
     }
     // --------------------------------------------------------
-    // SCREEN SAVER ACTIVE
-    // --------------------------------------------------------
-       if (screenSaverActive)
-       updateScreenSaver(true);
-       else
+// NIGHT MODE ACTIVE
+// --------------------------------------------------------
+if (nightModeActive)
+{
+    if (!settingNightMode ||
+        (bh1750OK && bh1750Lux >= nightWakeLux))
     {
+        nightModeActive = false;
+
+        Serial.println("NIGHT MODE: WAKE");
+        Serial.print("Lux: ");
+        Serial.println(bh1750Lux);
+
+        tft.fillScreen(COLOR_BG);
+
+        lastDigits[0] = -1;
+        lastDigits[1] = -1;
+        lastDigits[2] = -1;
+        lastDigits[3] = -1;
+        lastDay = -1;
+
+        if (getLocalTime(&timeinfo, 1000))
+        {
+            updateClock(timeinfo);
+
+            if (settingDate)
+            {
+                updateDate(timeinfo);
+            }
+
+            bool visible = (timeinfo.tm_sec % 2 == 0);
+            drawColon(visible);
+        }
+
+        lastWiFiState = false;
+        updateWiFiIndicator();
+        updateLowerPanel();
+        drawMenuIcon();
+
+        lastMotionTime = millis();
+    }
+}
+else if (screenSaverActive)
+{
+    updateScreenSaver(true);
+}
+else
+{
         // ----------------------------------------------------
         // CLOCK
         // ----------------------------------------------------
@@ -1652,18 +1718,6 @@ pirLastState = pirState;
                 bool visible =
                     (timeinfo.tm_sec % 2 == 0);
                 drawColon(visible);
-            }
-        }
-        // ----------------------------------------------------
-        // LOCAL SENSORS
-        // ----------------------------------------------------
-        if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
-        {
-            lastSensorRead = millis();
-            updateLocalSensors();
-            if (showingLocalSensors)
-            {
-                updateLocalSensorsDisplay();
             }
         }
         // ----------------------------------------------------

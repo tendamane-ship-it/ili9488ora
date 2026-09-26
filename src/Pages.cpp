@@ -9,6 +9,10 @@ extern bool settingLightSensor;
 extern bool settingScreenSaver;
 extern unsigned long screenSaverDelay;
 
+extern bool settingNightMode;
+extern float nightSleepLux;
+extern float nightWakeLux;
+
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
 String getDashboardPage()
@@ -1071,6 +1075,85 @@ html += "</div>";
 html += "<button type='button' class='restart' onclick='restartESP()'>";
 html += "Rinis ESP32";
 html += "</button>";
+
+html += "</div>";
+// --------------------------------------------------------
+// NIGHT MODE
+// --------------------------------------------------------
+
+html += "<div class='card'>";
+
+html += "<h2>Night Mode</h2>";
+
+// Night Mode ON/OFF
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Night Mode</div>";
+html += "<div class='description'>Put the display to sleep when the room gets dark</div>";
+html += "</div>";
+
+html += "<div class='control'>";
+html += "<select name='nightMode'>";
+
+if (settingNightMode)
+    html += "<option value='1' selected>ON</option>";
+else
+    html += "<option value='1'>ON</option>";
+
+if (!settingNightMode)
+    html += "<option value='0' selected>OFF</option>";
+else
+    html += "<option value='0'>OFF</option>";
+
+html += "</select>";
+html += "</div>";
+
+html += "</div>";
+
+// Sleep below lux
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Sleep below</div>";
+html += "<div class='description'>Display sleeps below this light level</div>";
+html += "</div>";
+
+html += "<div class='control'>";
+html += "<input type='number' ";
+html += "name='nightSleepLux' ";
+html += "min='0' ";
+html += "max='1000' ";
+html += "step='0.1' ";
+html += "value='";
+html += String(nightSleepLux, 1);
+html += "'>";
+html += "<span class='badge'>lux</span>";
+html += "</div>";
+
+html += "</div>";
+
+// Wake above lux
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Wake above</div>";
+html += "<div class='description'>Display wakes when light rises above this level</div>";
+html += "</div>";
+
+html += "<div class='control'>";
+html += "<input type='number' ";
+html += "name='nightWakeLux' ";
+html += "min='0' ";
+html += "max='1000' ";
+html += "step='0.1' ";
+html += "value='";
+html += String(nightWakeLux, 1);
+html += "'>";
+html += "<span class='badge'>lux</span>";
+html += "</div>";
+
+html += "</div>";
 
 html += "</div>";
     // --------------------------------------------------------
