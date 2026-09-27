@@ -8,7 +8,7 @@ extern bool settingWeather;
 extern bool settingLightSensor;
 extern bool settingScreenSaver;
 extern unsigned long screenSaverDelay;
-
+extern bool settingGreeting;
 extern bool settingNightMode;
 extern float nightSleepLux;
 extern float nightWakeLux;
@@ -1061,6 +1061,32 @@ html += "</div>";
 
 html += "</div>";
 
+
+html += "<div class='setting'>";
+
+html += "<div>";
+html += "<div class='label'>Greeting</div>";
+html += "<div class='description'>Show welcome message when PIR wakes the clock</div>";
+html += "</div>";
+
+html += "<div class='control'>";
+html += "<select name='greeting'>";
+
+if (settingGreeting)
+    html += "<option value='1' selected>ON</option>";
+else
+    html += "<option value='1'>ON</option>";
+
+if (!settingGreeting)
+    html += "<option value='0' selected>OFF</option>";
+else
+    html += "<option value='0'>OFF</option>";
+
+html += "</select>";
+html += "</div>";
+
+html += "</div>";
+
 html += "<div class='setting'>";
 
 html += "<div>";
@@ -1077,6 +1103,8 @@ html += "Rinis ESP32";
 html += "</button>";
 
 html += "</div>";
+
+
 // --------------------------------------------------------
 // NIGHT MODE
 // --------------------------------------------------------

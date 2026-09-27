@@ -19,6 +19,7 @@ extern bool bh1750OK;
 extern int pirState;
 extern bool settingScreenSaver;
 extern unsigned long screenSaverDelay;
+extern bool settingGreeting;
 extern bool settingNightMode;
 extern float nightSleepLux;
 extern float nightWakeLux;
@@ -721,6 +722,13 @@ if (server.hasArg("screenSaverMin"))
 
     screenSaverDelay = minutes * 60UL * 1000UL;
     preferences.putULong("screenSaverMin", minutes);
+}
+
+
+if (server.hasArg("greeting"))
+{
+    settingGreeting = server.arg("greeting") == "1";
+    preferences.putBool("greeting", settingGreeting);
 }
 if (server.hasArg("nightMode"))
 {

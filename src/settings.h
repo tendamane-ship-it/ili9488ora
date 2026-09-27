@@ -17,13 +17,15 @@ extern bool settingPIR;
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
 
-// Screensaver settings
 extern bool settingScreenSaver;
 extern unsigned long screenSaverMinutes;
-// Night Mode settings
+
+extern bool settingGreeting;
+
 extern bool settingNightMode;
 extern float nightSleepLux;
 extern float nightWakeLux;
+
 
 // Load saved settings from Preferences
 void loadSettings();

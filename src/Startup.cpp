@@ -211,7 +211,7 @@ void runStartup(TFT_eSPI* tft)
 
     drawCentered(
         tft,
-        "ALL SYSTEMS READY",
+        "TE GJITHA SISTEMET GATI",
         260,
         STARTUP_OK,
         2

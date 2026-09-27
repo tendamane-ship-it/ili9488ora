@@ -450,8 +450,29 @@ void drawWeather()
     // Menu icon
     drawMenuIcon();
 }
+void drawCloud()
+{
+    const int cx = 40;
+    const int cy = WEATHER_Y + 37;
 
+    // Trupi i rrumbullakosur i resë
+    tft.fillCircle(cx - 9, cy + 4, 9, TFT_LIGHTGREY);
+    tft.fillCircle(cx + 3, cy - 2, 12, TFT_LIGHTGREY);
+    tft.fillCircle(cx + 14, cy + 5, 8, TFT_LIGHTGREY);
 
+    // Mbushja e pjesës së poshtme
+    tft.fillRect(
+        cx - 9,
+        cy + 4,
+        23,
+        9,
+        TFT_LIGHTGREY
+    );
+
+    // Rrumbullakosim skajet e poshtme
+    tft.fillCircle(cx - 9, cy + 9, 5, TFT_LIGHTGREY);
+    tft.fillCircle(cx + 14, cy + 9, 5, TFT_LIGHTGREY);
+}
 // ============================================================
 // WEATHER ICON
 // ============================================================
@@ -529,34 +550,7 @@ void drawWeatherIcon()
     // =========================
     else if (code >= 1 && code <= 3)
     {
-        tft.fillCircle(
-            cx - 10,
-            cy + 4,
-            9,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 2,
-            cy - 2,
-            12,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 13,
-            cy + 5,
-            8,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillRect(
-            cx - 18,
-            cy + 4,
-            40,
-            12,
-            TFT_LIGHTGREY
-        );
+       drawCloud();
     }
 
     // =========================
@@ -587,36 +581,8 @@ void drawWeatherIcon()
     // RAIN
     // =========================
     else if (code >= 51 && code <= 67)
-    {
-        // Re
-        tft.fillCircle(
-            cx - 9,
-            cy - 1,
-            9,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 3,
-            cy - 6,
-            12,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 14,
-            cy,
-            8,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillRect(
-            cx - 17,
-            cy,
-            39,
-            11,
-            TFT_LIGHTGREY
-        );
+{
+    drawCloud();
 
         // Pikat e shiut
         tft.drawLine(
@@ -701,35 +667,7 @@ void drawWeatherIcon()
     // =========================
     else if (code >= 80 && code <= 82)
     {
-        // Re
-        tft.fillCircle(
-            cx - 9,
-            cy - 1,
-            9,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 3,
-            cy - 6,
-            12,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 14,
-            cy,
-            8,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillRect(
-            cx - 17,
-            cy,
-            39,
-            11,
-            TFT_LIGHTGREY
-        );
+       drawCloud();
 
         // Shi
         tft.drawLine(
@@ -811,36 +749,7 @@ void drawWeatherIcon()
     // THUNDERSTORM
     // =========================
     else if (code >= 95 && code <= 99)
-    {
-        // Re
-        tft.fillCircle(
-            cx - 9,
-            cy - 1,
-            9,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 3,
-            cy - 6,
-            12,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 14,
-            cy,
-            8,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillRect(
-            cx - 17,
-            cy,
-            39,
-            11,
-            TFT_LIGHTGREY
-        );
+    {drawCloud();
 
         // Rrufe
         tft.fillTriangle(
@@ -1051,44 +960,8 @@ void animateLightning()
 }
 void animateCloud()
 {
-    int code = weather.getData().weatherCode;
-
-    // Vetëm ikonat me re
-    if (!((code >= 1 && code <= 3) ||
-          (code >= 51 && code <= 67) ||
-          (code >= 71 && code <= 77) ||
-          (code >= 80 && code <= 82) ||
-          (code >= 85 && code <= 86) ||
-          (code >= 95 && code <= 99)))
-    {
-        return;
-    }
-
-    const int cx = 40;
-    const int cy = WEATHER_Y + 37;
-
-    // Lëvizje shumë e vogël majtas-djathtas
-    int offset = (cloudFrame == 0) ? 0 : 1;
-
-    // Fshi vetëm pjesën e poshtme të resë
-    tft.fillRect(
-        cx - 18,
-        cy - 1,
-        40,
-        12,
-        COLOR_BG
-    );
-
-    // Rivizato trupin e resë me zhvendosje minimale
-    tft.fillCircle(cx - 10 + offset, cy + 4, 9, TFT_LIGHTGREY);
-    tft.fillCircle(cx + 2 + offset, cy - 2, 12, TFT_LIGHTGREY);
-    tft.fillCircle(cx + 13 + offset, cy + 5, 8, TFT_LIGHTGREY);
-    tft.fillRect(cx - 18 + offset, cy + 4, 40, 12, TFT_LIGHTGREY);
-
-    cloudFrame++;
-
-    if (cloudFrame >= 2)
-        cloudFrame = 0;
+    // Reja është statike.
+    return;
 }
 void updateWeatherDisplay()
 {
@@ -1142,7 +1015,7 @@ void updateWeatherDisplay()
     snprintf(
         tempText,
         sizeof(tempText),
-        "Temp: %.1f C",
+        "Temp: %.1f °C",
         data.temperature
     );
 
@@ -1272,7 +1145,7 @@ void updateLocalSensorsDisplay()
     }
     else
     {
-        tft.print("TEMP: --.- C");
+        tft.print("TEMP: --.- °C");
     }
 
     // Humidity
@@ -1559,9 +1432,31 @@ if (screenSaverActive && !nightModeActive)
 
         Serial.println("PIR: MOTION DETECTED");
         Serial.println("SCREEN SAVER: WAKE");
+        if (settingGreeting)
+{
+    tft.fillScreen(COLOR_BG);
+
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.setTextFont(4);
+    tft.setTextSize(3);
+    tft.setTextDatum(MC_DATUM);
+
+    tft.drawString(
+        "MIRE SE VJEN",
+        240,
+        160
+    );
+
+    delay(2000);
+    tft.setTextSize(1);
+
+    tft.setTextDatum(TL_DATUM);
+
+    tft.fillScreen(COLOR_BG);
+}
 
         // Injoro PIR per 2 sekonda pas wake
-        pirIgnoreUntil = millis() + 2000;
+        pirIgnoreUntil = millis() + 1000;
 
         // Pastro ekranin
         tft.fillScreen(COLOR_BG);

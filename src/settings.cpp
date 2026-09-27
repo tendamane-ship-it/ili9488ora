@@ -9,6 +9,7 @@ bool settingDate = true;
 bool settingWeather = true;
 bool settingLightSensor = true;
 bool settingPIR = true;
+bool settingGreeting = true;
 
 // Display timing settings
 unsigned long localSensorsDisplayTime = 10000UL;
@@ -43,6 +44,8 @@ void loadSettings()
 
     screenSaverMinutes =
         preferences.getULong("screenSaverMin", 15UL);
+        settingGreeting =
+    preferences.getBool("greeting", true);
 
     // Keep screensaver delay within allowed range
     if (screenSaverMinutes < 1UL)
