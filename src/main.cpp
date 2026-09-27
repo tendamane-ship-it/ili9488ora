@@ -7,6 +7,7 @@
 #include "Sensors.h"
 #include "Settings.h"
 #include "ScreenSaver.h"
+#include "Startup.h"
 #include <TFT_eSPI.h>
 #include <time.h>
 
@@ -1361,24 +1362,11 @@ Serial.println("========================");
     // TFT
     // --------------------------------------------------------
     tft.init();
-    tft.setRotation(1);
-    tft.fillScreen(COLOR_BG);
-    initScreenSaver(&tft);
-    // --------------------------------------------------------
-    // STARTUP MESSAGE
-    // --------------------------------------------------------
-    tft.setTextColor(
-        TFT_WHITE,
-        COLOR_BG
-    );
-    tft.setTextFont(4);
-    const char* startupText = "LIDHJA ME WI-FI...";
-    int startupWidth = tft.textWidth(startupText);
-    tft.setCursor(
-        (480 - startupWidth) / 2,
-        140
-    );
-    tft.print(startupText);
+tft.setRotation(1);
+tft.fillScreen(COLOR_BG);
+initScreenSaver(&tft);
+
+    
     // --------------------------------------------------------
     // WIFI
     // --------------------------------------------------------
@@ -1441,11 +1429,21 @@ Serial.println("========================");
         }
         weather.update();
         lastWeatherUpdate = millis();
+        tuyaService.update();
+        lastTuyaUpdate = millis();
     }
     else
     {
         Serial.println("WiFi connection failed");
     }
+    // --------------------------------------------------------
+// STARTUP FILM
+// --------------------------------------------------------
+runStartup(&tft);
+// --------------------------------------------------------
+// WAIT FOR STARTUP FILM
+// --------------------------------------------------------
+
     // --------------------------------------------------------
     // INITIAL DISPLAY
     // --------------------------------------------------------
