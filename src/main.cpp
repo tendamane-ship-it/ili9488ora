@@ -46,6 +46,18 @@ const unsigned long HEART_INTERVAL = 1200UL;
 // Night Mode
 bool nightModeActive = false;
 
+enum ScreenMode
+{
+    SCREEN_CLOCK,
+    SCREEN_MENU,
+    SCREEN_ABOUT
+};
+
+ScreenMode screenMode = SCREEN_CLOCK;
+
+unsigned long aboutStartTime = 0;
+const unsigned long ABOUT_TIMEOUT = 15000UL;
+
 // Emrat e diteve ne shqip
 const char* days[] = {
     "E diel",
@@ -433,6 +445,140 @@ void drawMenuIcon()
 tft.drawLine(5, 41, 35, 41, TFT_WHITE);
 tft.drawLine(5, 49, 35, 49, TFT_WHITE);
 tft.drawLine(5, 57, 35, 57, TFT_WHITE);
+}
+void drawMainMenu()
+{
+    tft.fillScreen(COLOR_BG);
+
+    tft.setTextDatum(MC_DATUM);
+
+    // Titulli
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.setTextFont(4);
+    tft.setTextSize(1);
+    tft.drawString("MENU", 240, 25);
+
+    // IP address
+    String ip = WiFi.localIP().toString();
+
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.setTextFont(2);
+    tft.drawString(
+        "IP: " + ip,
+        240,
+        60
+    );
+
+    // 12H / 24H
+    tft.drawRect(80, 95, 320, 45, TFT_WHITE);
+
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.setTextFont(2);
+
+    if (setting24Hour)
+        tft.drawString("24H", 240, 117);
+    else
+        tft.drawString("12H", 240, 117);
+
+    // DATA ON / OFF
+    tft.drawRect(80, 150, 320, 45, TFT_WHITE);
+
+    if (settingDate)
+        tft.setTextColor(TFT_GREEN, COLOR_BG);
+    else
+        tft.setTextColor(TFT_RED, COLOR_BG);
+
+    tft.drawString(
+        settingDate ? "DATA ON" : "DATA OFF",
+        240,
+        172
+    );
+
+    // ABOUT
+    tft.drawRect(80, 205, 320, 45, TFT_WHITE);
+
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.drawString("ABOUT", 240, 227);
+
+    tft.setTextDatum(TL_DATUM);
+}
+void drawAbout()
+{
+    tft.fillScreen(COLOR_BG);
+
+    tft.setTextDatum(MC_DATUM);
+
+    // Titulli
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.setTextFont(4);
+    tft.setTextSize(1);
+    tft.drawString("ORA", 240, 30);
+
+    // Version
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.setTextFont(2);
+    tft.drawString("Version 1.1.7", 240, 65);
+
+    // Hardware / services
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+
+    tft.drawString("BME680",       240, 105);
+    tft.drawString("BH1750",       240, 130);
+    tft.drawString("PIR",          240, 155);
+    tft.drawString("Open-Meteo",   240, 180);
+    tft.drawString("Tuya Cloud",   240, 205);
+
+    // Author
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.drawString("Created by Murat Mane", 240, 250);
+
+    // Back
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.drawRect(180, 275, 120, 32, TFT_WHITE);
+    tft.drawString("BACK", 240, 291);
+
+    tft.setTextDatum(TL_DATUM);
+}
+void openMenu()
+{
+    screenMode = SCREEN_MENU;
+    drawMainMenu();
+}
+
+void openAbout()
+{
+    screenMode = SCREEN_ABOUT;
+    aboutStartTime = millis();
+    drawAbout();
+}
+void updateLowerPanel();
+void closeMenu()
+{
+    screenMode = SCREEN_CLOCK;
+
+    tft.fillScreen(COLOR_BG);
+
+    lastDigits[0] = -1;
+    lastDigits[1] = -1;
+    lastDigits[2] = -1;
+    lastDigits[3] = -1;
+    lastDay = -1;
+
+    if (getLocalTime(&timeinfo, 1000))
+    {
+        updateClock(timeinfo);
+
+        if (settingDate)
+            updateDate(timeinfo);
+
+        bool visible = (timeinfo.tm_sec % 2 == 0);
+        drawColon(visible);
+    }
+
+    lastWiFiState = false;
+    updateWiFiIndicator();
+    updateLowerPanel();
+    drawMenuIcon();
 }
 // ============================================================
 // WEATHER DISPLAY
@@ -1204,6 +1350,7 @@ void updateLocalSensorsDisplay()
         tft.print("Ajer: --");
     }
 }
+void updateLowerPanel();
 // ============================================================
 // SETUP
 // ============================================================
@@ -1517,7 +1664,47 @@ if (!screenSaverActive &&
 }
 // Ruaj gjendjen aktuale
 pirLastState = pirState;
-// NIGHT MODE
+    // MENU / ABOUT SCREEN
+    if (screenMode == SCREEN_ABOUT)
+    {
+        if (millis() - aboutStartTime >= ABOUT_TIMEOUT)
+        {
+            screenMode = SCREEN_CLOCK;
+
+            tft.fillScreen(COLOR_BG);
+
+            lastDigits[0] = -1;
+            lastDigits[1] = -1;
+            lastDigits[2] = -1;
+            lastDigits[3] = -1;
+            lastDay = -1;
+
+            if (getLocalTime(&timeinfo, 1000))
+            {
+                updateClock(timeinfo);
+
+                if (settingDate)
+                    updateDate(timeinfo);
+
+                bool visible = (timeinfo.tm_sec % 2 == 0);
+                drawColon(visible);
+            }
+
+            lastWiFiState = false;
+            updateWiFiIndicator();
+            updateLowerPanel();
+            drawMenuIcon();
+        }
+
+        webServer.handleClient();
+        return;
+    }
+
+    if (screenMode == SCREEN_MENU)
+    {
+        webServer.handleClient();
+        return;
+    }
 // NIGHT MODE
 if (settingNightMode &&
     bh1750OK &&
