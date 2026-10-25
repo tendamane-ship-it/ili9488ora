@@ -208,7 +208,7 @@ void initPIR()
 {
     pinMode(PIR_PIN, INPUT);
 
-    Serial.println("PIR initialized on GPIO 5");
+    Serial.println("PIR initialized on GPIO 42");
 }
 
 // ------------------------------------------------------------

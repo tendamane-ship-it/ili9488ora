@@ -64,71 +64,7 @@ void drawBootLine(
     tft->print("ONLINE");
 }
 
-// ============================================================
-// MANE ZOOM
-// ============================================================
 
-void maneZoom(TFT_eSPI* tft)
-{
-    const char* text = "MANE";
-
-    const int startSize = 1;
-    const int endSize = 18;
-
-    for (int size = startSize; size <= endSize; size++)
-    {
-        tft->fillScreen(STARTUP_BG);
-
-        tft->setTextFont(1);
-        tft->setTextSize(size);
-
-        tft->setTextColor(
-            STARTUP_ACCENT,
-            STARTUP_BG
-        );
-
-        int width = tft->textWidth(text);
-        int height = 8 * size;
-
-        int x = (480 - width) / 2;
-        int y = (320 - height) / 2;
-
-        tft->setCursor(x, y);
-        tft->print(text);
-
-        delay(25);
-    }
-
-    // --------------------------------------------------------
-    // FINAL LARGE MANE
-    // --------------------------------------------------------
-
-    tft->fillScreen(STARTUP_BG);
-
-    tft->setTextFont(1);
-    tft->setTextSize(24);
-
-    tft->setTextColor(
-        STARTUP_ACCENT,
-        STARTUP_BG
-    );
-
-    int width = tft->textWidth(text);
-    int height = 8 * 24;
-
-    int x = (480 - width) / 2;
-    int y = (320 - height) / 2;
-
-    tft->setCursor(x, y);
-    tft->print(text);
-
-    delay(80);
-
-    tft->fillScreen(STARTUP_BG);
-    tft->setTextSize(1);
-}
-
-// ============================================================
 // STARTUP FILM
 // ============================================================
 
@@ -159,7 +95,7 @@ void runStartup(TFT_eSPI* tft)
         2
     );
 
-    delay(250);
+    delay(200);
 
     // --------------------------------------------------------
     // SYSTEM LINES
@@ -171,7 +107,7 @@ void runStartup(TFT_eSPI* tft)
         125
     );
 
-    delay(500);
+    delay(200);
 
     drawBootLine(
         tft,
@@ -179,7 +115,7 @@ void runStartup(TFT_eSPI* tft)
         150
     );
 
-    delay(500);
+    delay(200);
 
     drawBootLine(
         tft,
@@ -187,7 +123,7 @@ void runStartup(TFT_eSPI* tft)
         175
     );
 
-    delay(500);
+    delay(200);
 
     drawBootLine(
         tft,
@@ -195,7 +131,7 @@ void runStartup(TFT_eSPI* tft)
         200
     );
 
-    delay(500);
+    delay(200);
 
     drawBootLine(
         tft,
@@ -203,7 +139,7 @@ void runStartup(TFT_eSPI* tft)
         225
     );
 
-    delay(220);
+    delay(200);
 
     // --------------------------------------------------------
     // READY
@@ -217,12 +153,12 @@ void runStartup(TFT_eSPI* tft)
         2
     );
 
-    delay(250);
+    delay(200);
 
     
     // --------------------------------------------------------
     // FINISHED
     // --------------------------------------------------------
 
-    tft->fillScreen(STARTUP_BG);
+    
 }

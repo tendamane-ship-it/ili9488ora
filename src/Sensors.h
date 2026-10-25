@@ -56,7 +56,7 @@ void updateAirQuality();
 // PIR
 // ------------------------------------------------------------
 
-#define PIR_PIN 5
+#define PIR_PIN 42
 
 extern bool pirLastState;
 

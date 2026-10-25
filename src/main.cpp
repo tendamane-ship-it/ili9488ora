@@ -9,7 +9,12 @@
 #include "ScreenSaver.h"
 #include "Startup.h"
 #include <TFT_eSPI.h>
+#include <XPT2046_Touchscreen.h>
 #include <time.h>
+#define TOUCH_CS   17
+#define TOUCH_IRQ  14
+
+XPT2046_Touchscreen touch(TOUCH_CS, TOUCH_IRQ);
 
 // ============================================================
 // WIFI
@@ -448,8 +453,8 @@ tft.drawLine(5, 57, 35, 57, TFT_WHITE);
 }
 void drawMainMenu()
 {
+    
     tft.fillScreen(COLOR_BG);
-
     tft.setTextDatum(MC_DATUM);
 
     // Titulli
@@ -1372,7 +1377,7 @@ screenSaverDelay = screenSaverMinutes * 60UL * 1000UL;
 // --------------------------------------------------------
 // SENSORS
 // --------------------------------------------------------
-initSensors();
+
 Serial.println("========================");
     Serial.println();
     Serial.println("==============================");
@@ -1381,12 +1386,40 @@ Serial.println("========================");
     // --------------------------------------------------------
     // TFT
     // --------------------------------------------------------
-    tft.init();
+tft.init();
+
 tft.setRotation(1);
+
+SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
+touch.begin();
+touch.setRotation(1);
+
 tft.fillScreen(COLOR_BG);
+
 initScreenSaver(&tft);
 
-    
+runStartup(&tft);
+
+// TOUCH - kontrollo sinjalin PEN
+if (touch.touched())
+{
+    TS_Point p = touch.getPoint();
+
+    Serial.printf(
+        "PEN=TOUCHED | X=%d | Y=%d | Z=%d\n",
+        p.x, p.y, p.z
+    );
+}
+else
+{
+    static unsigned long lastTouchCheck = 0;
+
+    if (millis() - lastTouchCheck >= 2000)
+    {
+        lastTouchCheck = millis();
+        Serial.println("PEN=NOT TOUCHED");
+    }
+}
     // --------------------------------------------------------
     // WIFI
     // --------------------------------------------------------
@@ -1459,10 +1492,10 @@ initScreenSaver(&tft);
     // --------------------------------------------------------
 // STARTUP FILM
 // --------------------------------------------------------
-runStartup(&tft);
-// --------------------------------------------------------
-// WAIT FOR STARTUP FILM
-// --------------------------------------------------------
+
+
+initSensors();
+
 
     // --------------------------------------------------------
     // INITIAL DISPLAY
@@ -1536,6 +1569,26 @@ void updateLowerPanel()
 // ============================================================
 void loop()
 {
+
+ // --------------------------------------------------------
+// TOUCH - TEST KOORDINATASH
+// --------------------------------------------------------
+if (touch.touched())
+{
+    TS_Point p = touch.getPoint();
+
+    Serial.print("Touch X: ");
+    Serial.print(p.x);
+    Serial.print(" | Y: ");
+    Serial.print(p.y);
+    Serial.print(" | Z: ");
+    Serial.println(p.z);
+
+    delay(200);
+}
+// --------------------------------------------------------
+// Fundi i TOUCH
+// --------------------------------------------------------
 // --------------------------------------------------------
 // PIR / MOTION
 // --------------------------------------------------------
