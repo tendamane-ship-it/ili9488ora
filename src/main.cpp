@@ -62,6 +62,8 @@ ScreenMode screenMode = SCREEN_CLOCK;
 
 unsigned long aboutStartTime = 0;
 const unsigned long ABOUT_TIMEOUT = 15000UL;
+unsigned long menuStartTime = 0;
+const unsigned long MENU_TIMEOUT = 30000UL;
 
 // Emrat e diteve ne shqip
 const char* days[] = {
@@ -547,6 +549,7 @@ void drawAbout()
 void openMenu()
 {
     screenMode = SCREEN_MENU;
+    menuStartTime = millis();
     drawMainMenu();
 }
 
@@ -1275,7 +1278,7 @@ void updateLocalSensorsDisplay()
     tft.setTextFont(2);
     tft.setTextDatum(MC_DATUM);
     tft.drawString(
-        "Sensoret lokale",
+        "Sensoret e dhomes",
         277,
         WEATHER_Y + 7
     );
@@ -1387,7 +1390,6 @@ Serial.println("========================");
     // TFT
     // --------------------------------------------------------
 tft.init();
-
 tft.setRotation(1);
 
 SPI.begin(TFT_SCLK, TFT_MISO, TFT_MOSI, -1);
@@ -1401,6 +1403,7 @@ initScreenSaver(&tft);
 runStartup(&tft);
 
 // TOUCH - kontrollo sinjalin PEN
+Serial.printf("IRQ GPIO14 = %d\n", digitalRead(TOUCH_IRQ));
 if (touch.touched())
 {
     TS_Point p = touch.getPoint();
@@ -1449,20 +1452,25 @@ else
         // ----------------------------------------------------
         // NTP
         // ----------------------------------------------------
-        configTime(
-            7200,
-            0,
-            NTP_SERVER,
-            "time.nist.gov",
-            "time.google.com"
-        );
-        Serial.println("Waiting for NTP...");
+configTzTime(
+    "CET-1CEST,M3.5.0,M10.5.0/3",
+    NTP_SERVER,
+    "time.nist.gov",
+    "time.google.com"
+);
+Serial.println("Waiting for NTP...");
+
         bool timeSynced = false;
         for (int i = 0; i < 30; i++)
         {
             if (getLocalTime(&timeinfo, 1000))
             {
                 Serial.println("Time synchronized");
+                Serial.printf("Local hour: %d\n", timeinfo.tm_hour);
+Serial.printf("Local date: %02d-%02d-%04d\n",
+              timeinfo.tm_mday,
+              timeinfo.tm_mon + 1,
+              timeinfo.tm_year + 1900);
              lastTuyaUpdate = millis();   
                 Serial.printf(
                     "Current time: %02d:%02d:%02d\n",
@@ -1570,25 +1578,60 @@ void updateLowerPanel()
 void loop()
 {
 
+ 
  // --------------------------------------------------------
-// TOUCH - TEST KOORDINATASH
-// --------------------------------------------------------
-if (touch.touched())
+ // TOUCH - HAP MENU DHE ABOUT
+ // --------------------------------------------------------
+static bool touchWasPressed = false;
+static unsigned long lastMenuTouch = 0;
+
+bool touchPressed = touch.touched();
+
+if (touchPressed && !touchWasPressed)
 {
     TS_Point p = touch.getPoint();
 
-    Serial.print("Touch X: ");
-    Serial.print(p.x);
-    Serial.print(" | Y: ");
-    Serial.print(p.y);
-    Serial.print(" | Z: ");
-    Serial.println(p.z);
+    Serial.printf(
+        "TOUCH X=%d Y=%d Z=%d\n",
+        p.x, p.y, p.z
+    );
 
-    delay(200);
+    if (p.z > 300 &&
+        millis() - lastMenuTouch > 500)
+    {
+        if (screenMode == SCREEN_CLOCK &&
+            p.x >= 3300 && p.x <= 4000 &&
+            p.y >= 2700 && p.y <= 3500)
+        {
+            lastMenuTouch = millis();
+            Serial.println("TOUCH: OPEN MENU");
+            openMenu();
+        }
+        else if (screenMode == SCREEN_MENU &&
+                 p.x >= 1800 && p.x <= 2250 &&
+                 p.y >= 1050 && p.y <= 1500)
+        {
+            lastMenuTouch = millis();
+            Serial.println("TOUCH: OPEN ABOUT");
+            openAbout();
+        }
+        else if (screenMode == SCREEN_ABOUT &&
+         p.z > 500 &&
+         p.x >= 1600 && p.x <= 2550 &&
+         p.y >= 500 && p.y <= 800)
+{
+    lastMenuTouch = millis();
+    Serial.println("TOUCH: BACK TO CLOCK");
+    closeMenu();
 }
+    }
+}
+
+touchWasPressed = touchPressed;
 // --------------------------------------------------------
-// Fundi i TOUCH
+// FUNDI TOUCH
 // --------------------------------------------------------
+
 // --------------------------------------------------------
 // PIR / MOTION
 // --------------------------------------------------------
@@ -1752,12 +1795,17 @@ pirLastState = pirState;
         webServer.handleClient();
         return;
     }
-
-    if (screenMode == SCREEN_MENU)
+     if (screenMode == SCREEN_MENU)
+{
+    if (millis() - menuStartTime >= MENU_TIMEOUT)
     {
-        webServer.handleClient();
-        return;
+        Serial.println("MENU: AUTO CLOSE");
+        closeMenu();
     }
+
+    webServer.handleClient();
+    return;
+}
 // NIGHT MODE
 if (settingNightMode &&
     bh1750OK &&
