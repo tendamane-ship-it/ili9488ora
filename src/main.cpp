@@ -11,6 +11,7 @@
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 #include <time.h>
+#include "WiFiManager.h"
 #define TOUCH_CS   17
 #define TOUCH_IRQ  14
 
@@ -19,8 +20,7 @@ XPT2046_Touchscreen touch(TOUCH_CS, TOUCH_IRQ);
 // ============================================================
 // WIFI
 // ============================================================
-const char* WIFI_SSID = "";
-const char* WIFI_PASSWORD = "";
+WiFiManager wifiManager;
 const char* NTP_SERVER = "pool.ntp.org";
 // ============================================================
 // TFT
@@ -1359,6 +1359,12 @@ void updateLocalSensorsDisplay()
     }
 }
 void updateLowerPanel();
+void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        Serial.print("WiFi disconnect reason: ");
+        Serial.println(info.wifi_sta_disconnected.reason);
+    }
+}
 // ============================================================
 // SETUP
 // ============================================================
@@ -1423,87 +1429,79 @@ else
         Serial.println("PEN=NOT TOUCHED");
     }
 }
-    // --------------------------------------------------------
-    // WIFI
-    // --------------------------------------------------------
-    Serial.println("Connecting to WiFi...");
-    WiFi.begin(
-        WIFI_SSID,
-        WIFI_PASSWORD
-    );
-    unsigned long startAttempt = millis();
-    while (
-        WiFi.status() != WL_CONNECTED &&
-        millis() - startAttempt < 20000
-    )
-    {
-        delay(500);
-        Serial.print(".");
-    }
-    Serial.println();
-    if (WiFi.status() == WL_CONNECTED)
-    {
-        Serial.println("WiFi connected");
-        Serial.print("IP: ");
-        Serial.println(WiFi.localIP());
-        webServer.setWeatherService(&weather);
-        webServer.begin();
-        
-        // ----------------------------------------------------
-        // NTP
-        // ----------------------------------------------------
-configTzTime(
-    "CET-1CEST,M3.5.0,M10.5.0/3",
-    NTP_SERVER,
-    "time.nist.gov",
-    "time.google.com"
-);
-Serial.println("Waiting for NTP...");
-
-        bool timeSynced = false;
-        for (int i = 0; i < 30; i++)
-        {
-            if (getLocalTime(&timeinfo, 1000))
-            {
-                Serial.println("Time synchronized");
-                Serial.printf("Local hour: %d\n", timeinfo.tm_hour);
-Serial.printf("Local date: %02d-%02d-%04d\n",
-              timeinfo.tm_mday,
-              timeinfo.tm_mon + 1,
-              timeinfo.tm_year + 1900);
-             lastTuyaUpdate = millis();   
-                Serial.printf(
-                    "Current time: %02d:%02d:%02d\n",
-                    timeinfo.tm_hour,
-                    timeinfo.tm_min,
-                    timeinfo.tm_sec
-                );
-                timeSynced = true;
-                break;
-            }
-            Serial.print(".");
-        }
-        Serial.println();
-        if (!timeSynced)
-        {
-            Serial.println("NTP failed");
-        }
-        weather.update();
-        lastWeatherUpdate = millis();
-        tuyaService.update();
-        lastTuyaUpdate = millis();
-    }
-    else
-    {
-        Serial.println("WiFi connection failed");
-    }
-    // --------------------------------------------------------
-// STARTUP FILM
+// --------------------------------------------------------
+// WIFI MANAGER
 // --------------------------------------------------------
 
+Serial.println("Starting WiFi Manager...");
+
+bool wifiConnected = wifiManager.begin(
+    "",
+    "",
+    20000
+);
+
+if (wifiConnected)
+{
+    Serial.println("WiFi Manager: CONNECTED");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+
+    webServer.setWeatherService(&weather);
+    webServer.begin();
+
+    configTzTime(
+        "CET-1CEST,M3.5.0,M10.5.0/3",
+        NTP_SERVER,
+        "time.nist.gov",
+        "time.google.com"
+    );
+
+    Serial.println("Waiting for NTP...");
+
+    bool timeSynced = false;
+
+    for (int i = 0; i < 30; i++)
+    {
+        if (getLocalTime(&timeinfo, 1000))
+        {
+            Serial.println("Time synchronized");
+
+            lastTuyaUpdate = millis();
+
+            Serial.printf(
+                "Current time: %02d:%02d:%02d\n",
+                timeinfo.tm_hour,
+                timeinfo.tm_min,
+                timeinfo.tm_sec
+            );
+
+            timeSynced = true;
+            break;
+        }
+
+        Serial.print(".");
+    }
+
+    Serial.println();
+
+    if (!timeSynced)
+    {
+        Serial.println("NTP failed");
+    }
+
+    weather.update();
+    lastWeatherUpdate = millis();
+
+    tuyaService.update();
+    lastTuyaUpdate = millis();
+}
+else
+{
+    Serial.println("WiFi Manager: PORTAL ACTIVE");
+}
 
 initSensors();
-
 
     // --------------------------------------------------------
     // INITIAL DISPLAY
@@ -1577,6 +1575,12 @@ void updateLowerPanel()
 // ============================================================
 void loop()
 {
+    wifiManager.handleClient();
+
+if (wifiManager.isConnected())
+{
+    webServer.handleClient();
+}
 
  
  // --------------------------------------------------------
@@ -1607,14 +1611,51 @@ if (touchPressed && !touchWasPressed)
             Serial.println("TOUCH: OPEN MENU");
             openMenu();
         }
-        else if (screenMode == SCREEN_MENU &&
-                 p.x >= 1800 && p.x <= 2250 &&
-                 p.y >= 1050 && p.y <= 1500)
-        {
-            lastMenuTouch = millis();
-            Serial.println("TOUCH: OPEN ABOUT");
-            openAbout();
-        }
+        if (screenMode == SCREEN_MENU &&
+    p.x >= 1800 && p.x <= 2250 &&
+    p.y >= 1050 && p.y <= 1500)
+{
+    lastMenuTouch = millis();
+
+    setting24Hour = !setting24Hour;
+
+    preferences.begin("ora", false);
+    preferences.putBool("24hour", setting24Hour);
+    preferences.end();
+
+    Serial.printf(
+        "TIME FORMAT: %s\n",
+        setting24Hour ? "24H" : "12H"
+    );
+
+    drawMainMenu();
+}
+else if (screenMode == SCREEN_MENU &&
+         p.x >= 1800 && p.x <= 2250 &&
+         p.y >= 1600 && p.y <= 2050)
+{
+    lastMenuTouch = millis();
+    settingDate = !settingDate;
+
+    preferences.begin("ora", false);
+    preferences.putBool("date", settingDate);
+    preferences.end();
+
+    Serial.printf(
+        "DATE: %s\n",
+        settingDate ? "ON" : "OFF"
+    );
+
+    drawMainMenu();
+}
+else if (screenMode == SCREEN_MENU &&
+         p.x >= 1800 && p.x <= 2250 &&
+         p.y >= 2300 && p.y <= 2800)
+{
+    lastMenuTouch = millis();
+    Serial.println("TOUCH: OPEN ABOUT");
+    openAbout();
+}
         else if (screenMode == SCREEN_ABOUT &&
          p.z > 500 &&
          p.x >= 1600 && p.x <= 2550 &&
@@ -1791,9 +1832,7 @@ pirLastState = pirState;
             updateLowerPanel();
             drawMenuIcon();
         }
-
-        webServer.handleClient();
-        return;
+         return;
     }
      if (screenMode == SCREEN_MENU)
 {
@@ -1802,9 +1841,7 @@ pirLastState = pirState;
         Serial.println("MENU: AUTO CLOSE");
         closeMenu();
     }
-
-    webServer.handleClient();
-    return;
+return;
 }
 // NIGHT MODE
 if (settingNightMode &&
@@ -1966,7 +2003,4 @@ if (millis() - lastTuyaUpdate >= TUYA_UPDATE_INTERVAL)
     tuyaService.update();
 }
 
-    // WEB SERVER
-    // --------------------------------------------------------
-    webServer.handleClient();
 }

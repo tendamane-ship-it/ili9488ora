@@ -85,10 +85,16 @@ void WebServerManager::handleClient()
 {
     server.handleClient();
 }
-
 void WebServerManager::handleRoot()
 {
-    server.send(200, "text/html", getDashboardPage());
+    Serial.printf("Free heap BEFORE HTML: %u\n", ESP.getFreeHeap());
+
+    String page = getDashboardPage();
+
+    Serial.printf("HTML size: %u bytes\n", page.length());
+    Serial.printf("Free heap AFTER HTML: %u\n", ESP.getFreeHeap());
+
+    server.send(200, "text/html", page);
 }
 void WebServerManager::handleSettings()
 {
@@ -96,6 +102,7 @@ void WebServerManager::handleSettings()
 }
 void WebServerManager::handleApiStatus()
 {
+    Serial.println("API STATUS REQUEST RECEIVED");
     String json;
 
     json += "{";
@@ -306,7 +313,12 @@ json += (pirState == HIGH ? "true" : "false");
 
     json += "}";
 
-    server.send(200, "application/json", json);
+    Serial.printf("API JSON size: %u bytes\n", json.length());
+Serial.println("API: sending response...");
+
+server.send(200, "application/json", json);
+
+Serial.println("API: response sent");
 }
 void WebServerManager::handleApiPage()
 {
