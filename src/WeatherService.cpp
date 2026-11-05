@@ -2,12 +2,16 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
+#include "SerialLog.h"
 
 #define WEATHER_LAT  39.8750
 #define WEATHER_LON  20.0050
 
 WeatherService::WeatherService()
+    : dataMutex(xSemaphoreCreateMutex())
 {
+    configASSERT(dataMutex != nullptr);
+
     // Current weather
     data.temperature = 0;
     data.humidity = 0;
@@ -120,43 +124,46 @@ bool WeatherService::update()
         return false;
     }
 
-    data.temperature =
+    WeatherData updatedData{};
+    DailyWeather updatedDaily[FORECAST_DAYS];
+
+    updatedData.temperature =
         current["temperature_2m"] | 0.0;
 
-    data.humidity =
+    updatedData.humidity =
         current["relative_humidity_2m"] | 0.0;
 
-    data.pressure =
+    updatedData.pressure =
         current["pressure_msl"] | 0.0;
 
-    data.windSpeed =
+    updatedData.windSpeed =
         current["wind_speed_10m"] | 0.0;
 
-    data.windDirection =
+    updatedData.windDirection =
         current["wind_direction_10m"] | 0.0;
 
-    data.windGusts =
+    updatedData.windGusts =
         current["wind_gusts_10m"] | 0.0;
 
-    data.precipitation =
+    updatedData.precipitation =
         current["precipitation"] | 0.0;
 
-    data.rain =
+    updatedData.rain =
         current["rain"] | 0.0;
 
-    data.cloudCover =
+    updatedData.cloudCover =
         current["cloud_cover"] | 0.0;
 
-    data.apparentTemperature =
+    updatedData.apparentTemperature =
         current["apparent_temperature"] | 0.0;
 
-    data.weatherCode =
+    updatedData.weatherCode =
         current["weather_code"] | -1;
 
-    data.isDay =
+    updatedData.isDay =
         current["is_day"] | false;
 
-    data.valid = true;
+    updatedData.valid = true;
 
     // --------------------------------------------------------
     // DAILY FORECAST
@@ -199,33 +206,39 @@ bool WeatherService::update()
 
     for (int i = 0; i < FORECAST_DAYS; i++)
     {
-        daily[i].date =
+        updatedDaily[i].date =
             dates[i] | "";
 
-        daily[i].temperatureMax =
+        updatedDaily[i].temperatureMax =
             tempMax[i] | 0.0;
 
-        daily[i].temperatureMin =
+        updatedDaily[i].temperatureMin =
             tempMin[i] | 0.0;
 
-        daily[i].precipitationSum =
+        updatedDaily[i].precipitationSum =
             precipitationSum[i] | 0.0;
 
-        daily[i].precipitationProbability =
+        updatedDaily[i].precipitationProbability =
             precipitationProbability[i] | 0;
 
-        daily[i].windSpeedMax =
+        updatedDaily[i].windSpeedMax =
             windSpeedMax[i] | 0.0;
 
-        daily[i].sunrise =
+        updatedDaily[i].sunrise =
             sunrise[i] | "";
 
-        daily[i].sunset =
+        updatedDaily[i].sunset =
             sunset[i] | "";
 
-        daily[i].weatherCode =
+        updatedDaily[i].weatherCode =
             weatherCodes[i] | -1;
     }
+
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    data = updatedData;
+    for (int i = 0; i < FORECAST_DAYS; i++)
+        daily[i] = updatedDaily[i];
+    xSemaphoreGive(dataMutex);
 
     // --------------------------------------------------------
     // SERIAL OUTPUT
@@ -235,62 +248,62 @@ bool WeatherService::update()
 
     Serial.printf(
         "Temperature: %.1f C\n",
-        data.temperature
+        updatedData.temperature
     );
 
     Serial.printf(
         "Feels like: %.1f C\n",
-        data.apparentTemperature
+        updatedData.apparentTemperature
     );
 
     Serial.printf(
         "Humidity: %.1f %%\n",
-        data.humidity
+        updatedData.humidity
     );
 
     Serial.printf(
         "Pressure: %.1f hPa\n",
-        data.pressure
+        updatedData.pressure
     );
 
     Serial.printf(
         "Wind: %.1f km/h\n",
-        data.windSpeed
+        updatedData.windSpeed
     );
 
     Serial.printf(
         "Wind direction: %.0f deg\n",
-        data.windDirection
+        updatedData.windDirection
     );
 
     Serial.printf(
         "Wind gusts: %.1f km/h\n",
-        data.windGusts
+        updatedData.windGusts
     );
 
     Serial.printf(
         "Precipitation: %.1f mm\n",
-        data.precipitation
+        updatedData.precipitation
     );
 
     Serial.printf(
         "Rain: %.1f mm\n",
-        data.rain
+        updatedData.rain
     );
 
     Serial.printf(
         "Cloud cover: %.0f %%\n",
-        data.cloudCover
+        updatedData.cloudCover
     );
 
     Serial.printf(
         "Weather code: %d\n",
-        data.weatherCode
+        updatedData.weatherCode
     );
 
     Serial.printf(
         "Day: %s\n",
-        data.isDay ? "YES" : "NO"
+        updatedData.isDay ? "YES" : "NO"
     );
 
     Serial.println();
@@ -300,31 +313,34 @@ bool WeatherService::update()
     {
         Serial.printf(
             "%s | Min %.1f C | Max %.1f C | Rain %.1f mm | Probability %d %% | Wind %.1f km/h | Code %d\n",
-            daily[i].date.c_str(),
-            daily[i].temperatureMin,
-            daily[i].temperatureMax,
-            daily[i].precipitationSum,
-            daily[i].precipitationProbability,
-            daily[i].windSpeedMax,
-            daily[i].weatherCode
+            updatedDaily[i].date.c_str(),
+            updatedDaily[i].temperatureMin,
+            updatedDaily[i].temperatureMax,
+            updatedDaily[i].precipitationSum,
+            updatedDaily[i].precipitationProbability,
+            updatedDaily[i].windSpeedMax,
+            updatedDaily[i].weatherCode
         );
 
         Serial.printf(
             "Sunrise: %s | Sunset: %s\n",
-            daily[i].sunrise.c_str(),
-            daily[i].sunset.c_str()
+            updatedDaily[i].sunrise.c_str(),
+            updatedDaily[i].sunset.c_str()
         );
     }
 
     return true;
 }
 
-const WeatherData& WeatherService::getData() const
+WeatherData WeatherService::getData() const
 {
-    return data;
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    WeatherData result = data;
+    xSemaphoreGive(dataMutex);
+    return result;
 }
 
-const DailyWeather& WeatherService::getDaily(int index) const
+DailyWeather WeatherService::getDaily(int index) const
 {
     if (index < 0)
         index = 0;
@@ -332,5 +348,8 @@ const DailyWeather& WeatherService::getDaily(int index) const
     if (index >= FORECAST_DAYS)
         index = FORECAST_DAYS - 1;
 
-    return daily[index];
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    DailyWeather result = daily[index];
+    xSemaphoreGive(dataMutex);
+    return result;
 }

@@ -2,6 +2,8 @@
 #define WEATHER_SERVICE_H
 
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 struct WeatherData
 {
@@ -48,15 +50,16 @@ public:
 
     bool update();
 
-    const WeatherData& getData() const;
+    WeatherData getData() const;
 
-    const DailyWeather& getDaily(int index) const;
+    DailyWeather getDaily(int index) const;
 
     static const int FORECAST_DAYS = 7;
 
 private:
     WeatherData data;
     DailyWeather daily[FORECAST_DAYS];
+    mutable SemaphoreHandle_t dataMutex;
 };
 
 #endif

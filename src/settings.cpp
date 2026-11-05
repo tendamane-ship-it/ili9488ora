@@ -1,4 +1,4 @@
-#include "Settings.h"
+#include "settings.h"
 
 // Preferences
 Preferences preferences;

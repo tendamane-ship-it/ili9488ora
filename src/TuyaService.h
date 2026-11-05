@@ -2,6 +2,8 @@
 #define TUYASERVICE_H
 
 #include <Arduino.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/semphr.h>
 
 class TuyaService
 {
@@ -22,8 +24,10 @@ private:
     float humidity;
     int battery;
     bool online;
+    mutable SemaphoreHandle_t dataMutex;
 
     String getAccessToken();
+    void setOffline();
 };
 
 #endif

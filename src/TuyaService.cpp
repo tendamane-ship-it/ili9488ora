@@ -6,6 +6,7 @@
 #include <ArduinoJson.h>
 #include <mbedtls/md.h>
 #include <time.h>
+#include "SerialLog.h"
 
 // ============================================================
 // TUYA SIGNATURE HELPERS
@@ -101,7 +102,9 @@ String hmacSha256Hex(
 // ============================================================
 
 TuyaService::TuyaService()
+    : dataMutex(xSemaphoreCreateMutex())
 {
+    configASSERT(dataMutex != nullptr);
     temperature = 0.0;
     humidity = 0.0;
     battery = 0;
@@ -227,10 +230,7 @@ String TuyaService::getAccessToken()
     );
     Serial.println(httpCode);
 
-    Serial.println(
-        "Tuya token response:"
-    );
-    Serial.println(response);
+    Serial.println("Tuya token response: [redacted]");
 
     http.end();
 
@@ -271,7 +271,7 @@ bool TuyaService::update()
 {
     if (WiFi.status() != WL_CONNECTED)
     {
-        online = false;
+        setOffline();
         return false;
     }
 
@@ -288,7 +288,7 @@ bool TuyaService::update()
             "Tuya: failed to get access token"
         );
 
-        online = false;
+        setOffline();
         return false;
     }
 
@@ -407,7 +407,7 @@ bool TuyaService::update()
 
     if (httpCode != 200)
     {
-        online = false;
+        setOffline();
         return false;
     }
 
@@ -428,19 +428,25 @@ bool TuyaService::update()
             error.c_str()
         );
 
-        online = false;
+        setOffline();
         return false;
     }
 
     if (!doc["success"])
     {
-        online = false;
+        setOffline();
         return false;
     }
 
     // --------------------------------------------------------
     // Device status
     // --------------------------------------------------------
+
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    float updatedTemperature = temperature;
+    float updatedHumidity = humidity;
+    int updatedBattery = battery;
+    xSemaphoreGive(dataMutex);
 
     JsonArray result =
         doc["result"].as<JsonArray>();
@@ -459,7 +465,7 @@ for (JsonObject item : result)
         ) == 0
     )
     {
-        temperature =
+        updatedTemperature =
             item["value"].as<float>() /
             10.0;
     }
@@ -470,7 +476,7 @@ for (JsonObject item : result)
         ) == 0
     )
     {
-        humidity =
+        updatedHumidity =
             item["value"].as<float>();
     }
     else if (
@@ -492,7 +498,7 @@ for (JsonObject item : result)
                 ) == 0
             )
             {
-                battery = 100;
+                updatedBattery = 100;
             }
             else if (
                 strcmp(
@@ -501,7 +507,7 @@ for (JsonObject item : result)
                 ) == 0
             )
             {
-                battery = 50;
+                updatedBattery = 50;
             }
             else if (
                 strcmp(
@@ -510,13 +516,18 @@ for (JsonObject item : result)
                 ) == 0
             )
             {
-                battery = 20;
+                updatedBattery = 20;
             }
         }
     }
 }
 
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    temperature = updatedTemperature;
+    humidity = updatedHumidity;
+    battery = updatedBattery;
     online = true;
+    xSemaphoreGive(dataMutex);
 
     Serial.println(
         "Tuya: device status OK"
@@ -526,7 +537,7 @@ for (JsonObject item : result)
         "Tuya temperature: "
     );
     Serial.print(
-        temperature
+        updatedTemperature
     );
     Serial.println(" C");
 
@@ -534,7 +545,7 @@ for (JsonObject item : result)
         "Tuya humidity: "
     );
     Serial.print(
-        humidity
+        updatedHumidity
     );
     Serial.println(" %");
 
@@ -542,7 +553,7 @@ for (JsonObject item : result)
         "Tuya battery: "
     );
     Serial.print(
-        battery
+        updatedBattery
     );
     Serial.println(" %");
 
@@ -555,20 +566,39 @@ for (JsonObject item : result)
 
 float TuyaService::getTemperature()
 {
-    return temperature;
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    float value = temperature;
+    xSemaphoreGive(dataMutex);
+    return value;
 }
 
 float TuyaService::getHumidity()
 {
-    return humidity;
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    float value = humidity;
+    xSemaphoreGive(dataMutex);
+    return value;
 }
 
 int TuyaService::getBattery()
 {
-    return battery;
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    int value = battery;
+    xSemaphoreGive(dataMutex);
+    return value;
 }
 
 bool TuyaService::isOnline()
 {
-    return online;
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    bool value = online;
+    xSemaphoreGive(dataMutex);
+    return value;
+}
+
+void TuyaService::setOffline()
+{
+    xSemaphoreTake(dataMutex, portMAX_DELAY);
+    online = false;
+    xSemaphoreGive(dataMutex);
 }

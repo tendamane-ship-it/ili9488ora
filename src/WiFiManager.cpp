@@ -1,5 +1,6 @@
 
 #include "WiFiManager.h"
+#include "SerialLog.h"
 
 static const char* AP_SSID = "oraPas88888888";
 static const char* AP_PASSWORD = "88888888";
@@ -40,7 +41,11 @@ Serial.println(wifiPassword.length());
     return false;
 }
 bool WiFiManager::connectToWiFi(uint32_t timeoutMs) {
-        WiFi.mode(WIFI_STA);
+    if (!WiFi.mode(WIFI_STA)) {
+        Serial.println("WiFi: failed to switch to station mode");
+        return false;
+    }
+
     delay(300);
 
     if (wifiSSID.length() == 0) {
@@ -75,12 +80,11 @@ bool WiFiManager::connectToWiFi(uint32_t timeoutMs) {
     return false;
 }
 void WiFiManager::startPortal() {
-   WiFi.mode(WIFI_OFF);
-delay(500);
+    if (!WiFi.mode(WIFI_AP)) {
+        Serial.println("WiFi: failed to switch to access point mode");
+        return;
+    }
 
-WiFi.mode(WIFI_AP);
-delay(500);
-    
 
     IPAddress apIP(192, 168, 4, 1);
     IPAddress gateway(192, 168, 4, 1);
@@ -247,8 +251,6 @@ void WiFiManager::stopPortal() {
 
     dnsServer.stop();
     portalServer.stop();
-
-    WiFi.softAPdisconnect(true);
 
     portalActive = false;
     serverStarted = false;

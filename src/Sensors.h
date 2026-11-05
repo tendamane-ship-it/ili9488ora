@@ -12,9 +12,13 @@
 
 extern Adafruit_BME680 bme;
 extern bool bme680OK;
+extern bool bmeReadingOK;
+extern unsigned long lastBmeReading;
 
 extern BH1750 lightMeter;
 extern bool bh1750OK;
+extern bool bh1750ReadingOK;
+extern unsigned long lastLuxReading;
 
 // ------------------------------------------------------------
 // SENSOR VALUES

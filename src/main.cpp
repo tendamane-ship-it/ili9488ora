@@ -5,13 +5,16 @@
 #include "Pages.h"
 #include "WeatherService.h"
 #include "Sensors.h"
-#include "Settings.h"
+#include "settings.h"
 #include "ScreenSaver.h"
 #include "Startup.h"
 #include <TFT_eSPI.h>
 #include <XPT2046_Touchscreen.h>
 #include <time.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "WiFiManager.h"
+#include "SerialLog.h"
 #define TOUCH_CS   17
 #define TOUCH_IRQ  14
 
@@ -27,12 +30,28 @@ const char* NTP_SERVER = "pool.ntp.org";
 // ============================================================
 TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
+volatile bool timeSynchronized = false;
+volatile bool weatherUpdatePending = false;
+bool startupActive = true;
+unsigned long startupStartedAt = 0;
+unsigned long startupResultsAt = 0;
+unsigned long ntpStartedAt = 0;
 WebServerManager webServer;
 TuyaService tuyaService;
 unsigned long lastTuyaUpdate = 0;
 const unsigned long TUYA_UPDATE_INTERVAL = 60UL * 1000UL;
 WeatherService weather;
 int pirState = LOW;
+
+bool getSyncedTime(struct tm& result)
+{
+    time_t now = time(nullptr);
+    if (now < 1483228800)
+        return false;
+
+    localtime_r(&now, &result);
+    return true;
+}
 
 // ============================================================
 // COLORS
@@ -98,7 +117,9 @@ const char* months[] = {
 #define SEG_THICK     13
 #define DIGIT_GAP     10
 #define CLOCK_Y       25
-const int COLON_X = 232;
+const int MAIN_CONTENT_CENTER_X = 277;
+const int CLOCK_SHIFT_X = MAIN_CONTENT_CENTER_X - 237;
+const int COLON_X = 232 + CLOCK_SHIFT_X;
 // ============================================================
 // 7-SEGMENT DIGIT MAP
 // ============================================================
@@ -120,7 +141,7 @@ const bool digitSegments[10][7] =
 // ============================================================
 int getDigitX(int index)
 {
-    const int startX = 43;
+    const int startX = 43 + CLOCK_SHIFT_X;
     if (index == 0)
         return startX;
     if (index == 1)
@@ -323,7 +344,7 @@ void updateClock(struct tm& timeinfo)
         if (hour == 0)
             hour = 12;
     }
-    digits[0] = hour / 10;
+    digits[0] = (!setting24Hour && hour < 10) ? -1 : hour / 10;
     digits[1] = hour % 10;
     digits[2] = timeinfo.tm_min / 10;
     digits[3] = timeinfo.tm_min % 10;
@@ -374,7 +395,7 @@ void updateDate(struct tm& timeinfo)
     tft.setTextFont(4);
     int textWidth = tft.textWidth(dateText);
     tft.setCursor(
-        (480 - textWidth) / 2,
+        MAIN_CONTENT_CENTER_X - textWidth / 2,
         187
     );
     tft.print(dateText);
@@ -572,7 +593,7 @@ void closeMenu()
     lastDigits[3] = -1;
     lastDay = -1;
 
-    if (getLocalTime(&timeinfo, 1000))
+    if (getSyncedTime(timeinfo))
     {
         updateClock(timeinfo);
 
@@ -1291,11 +1312,15 @@ void updateLocalSensorsDisplay()
     tft.setTextColor(TFT_ORANGE, COLOR_BG);
     tft.setCursor(85, WEATHER_Y + 25);
 
-    if (bme680OK)
+    if (bmeReadingOK)
     {
         tft.print("Temp: ");
         tft.print(bmeTemp, 1);
         tft.print(" C");
+    }
+    else if (bme680OK)
+    {
+        tft.print("Temp: ERR");
     }
     else
     {
@@ -1306,11 +1331,15 @@ void updateLocalSensorsDisplay()
     tft.setTextColor(TFT_CYAN, COLOR_BG);
     tft.setCursor(285, WEATHER_Y + 25);
 
-    if (bme680OK)
+    if (bmeReadingOK)
     {
         tft.print("Lag: ");
         tft.print(bmeHumidity, 0);
         tft.print(" %");
+    }
+    else if (bme680OK)
+    {
+        tft.print("Lag: ERR");
     }
     else
     {
@@ -1321,10 +1350,14 @@ void updateLocalSensorsDisplay()
     tft.setTextColor(TFT_YELLOW, COLOR_BG);
     tft.setCursor(85, WEATHER_Y + 52);
 
-    if (bh1750OK)
+    if (bh1750ReadingOK)
     {
         tft.print("LUX: ");
         tft.print(bh1750Lux, 0);
+    }
+    else if (bh1750OK)
+    {
+        tft.print("LUX: ERR");
     }
     else
     {
@@ -1335,27 +1368,28 @@ void updateLocalSensorsDisplay()
     tft.setTextColor(TFT_GREEN, COLOR_BG);
     tft.setCursor(285, WEATHER_Y + 52);
 
-    if (bme680OK)
+    if (!bme680OK)
     {
-        if (!airBaselineReady)
-        {
-            tft.print("AIR: CAL...");
-        }
-        else
-        {
-            float ratio = bmeGas / airBaseline;
-
-            if (ratio >= 0.80)
-                tft.print("AIR: GOOD");
-            else if (ratio >= 0.50)
-                tft.print("AIR: FAIR");
-            else
-                tft.print("AIR: POOR");
-        }
+        tft.print("Ajer: --");
+    }
+    else if (!bmeReadingOK)
+    {
+        tft.print("AIR: ERR");
+    }
+    else if (!airBaselineReady)
+    {
+        tft.print("AIR: CAL...");
     }
     else
     {
-        tft.print("Ajer: --");
+        float ratio = bmeGas / airBaseline;
+
+        if (ratio >= 0.80)
+            tft.print("AIR: GOOD");
+        else if (ratio >= 0.50)
+            tft.print("AIR: FAIR");
+        else
+            tft.print("AIR: POOR");
     }
 }
 void updateLowerPanel();
@@ -1365,6 +1399,48 @@ void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
         Serial.println(info.wifi_sta_disconnected.reason);
     }
 }
+
+void networkServicesTask(void* parameter)
+{
+    (void)parameter;
+
+    for (;;)
+    {
+        if (timeSynchronized && wifiManager.isConnected())
+        {
+            unsigned long now = millis();
+
+            if (now - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)
+            {
+                lastWeatherUpdate = now;
+                setStartupStatus(STARTUP_WEATHER, STARTUP_CHECKING);
+                if (weather.update())
+                {
+                    weatherUpdatePending = true;
+                    setStartupStatus(STARTUP_WEATHER, STARTUP_OK);
+                }
+                else
+                {
+                    setStartupStatus(STARTUP_WEATHER, STARTUP_ERROR);
+                }
+            }
+
+            now = millis();
+            if (now - lastTuyaUpdate >= TUYA_UPDATE_INTERVAL)
+            {
+                lastTuyaUpdate = now;
+                setStartupStatus(STARTUP_TUYA, STARTUP_CHECKING);
+                setStartupStatus(
+                    STARTUP_TUYA,
+                    tuyaService.update() ? STARTUP_OK : STARTUP_ERROR
+                );
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+}
+
 // ============================================================
 // SETUP
 // ============================================================
@@ -1372,6 +1448,7 @@ void setup()
 {
     Serial.begin(115200);
     delay(1000);
+    WiFi.onEvent(WiFiEvent);
     loadSettings();
     if (settingPIR)
 {
@@ -1407,6 +1484,7 @@ tft.fillScreen(COLOR_BG);
 initScreenSaver(&tft);
 
 runStartup(&tft);
+startupStartedAt = millis();
 
 // TOUCH - kontrollo sinjalin PEN
 Serial.printf("IRQ GPIO14 = %d\n", digitalRead(TOUCH_IRQ));
@@ -1434,6 +1512,7 @@ else
 // --------------------------------------------------------
 
 Serial.println("Starting WiFi Manager...");
+setStartupStatus(STARTUP_WIFI, STARTUP_CHECKING);
 
 bool wifiConnected = wifiManager.begin(
     "",
@@ -1443,9 +1522,17 @@ bool wifiConnected = wifiManager.begin(
 
 if (wifiConnected)
 {
+    setStartupStatus(STARTUP_WIFI, STARTUP_OK);
+    setStartupStatus(STARTUP_NTP, STARTUP_CHECKING);
+    setStartupStatus(STARTUP_WEATHER, STARTUP_WAITING);
+    setStartupStatus(STARTUP_TUYA, STARTUP_BACKGROUND);
+
     Serial.println("WiFi Manager: CONNECTED");
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
+        Serial.print("WiFi RSSI: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
 
     webServer.setWeatherService(&weather);
     webServer.begin();
@@ -1457,73 +1544,45 @@ if (wifiConnected)
         "time.google.com"
     );
 
-    Serial.println("Waiting for NTP...");
-
-    bool timeSynced = false;
-
-    for (int i = 0; i < 30; i++)
-    {
-        if (getLocalTime(&timeinfo, 1000))
-        {
-            Serial.println("Time synchronized");
-
-            lastTuyaUpdate = millis();
-
-            Serial.printf(
-                "Current time: %02d:%02d:%02d\n",
-                timeinfo.tm_hour,
-                timeinfo.tm_min,
-                timeinfo.tm_sec
-            );
-
-            timeSynced = true;
-            break;
-        }
-
-        Serial.print(".");
-    }
-
-    Serial.println();
-
-    if (!timeSynced)
-    {
-        Serial.println("NTP failed");
-    }
-
-    weather.update();
-    lastWeatherUpdate = millis();
-
-    tuyaService.update();
-    lastTuyaUpdate = millis();
+    ntpStartedAt = millis();
+    Serial.println("NTP sync running in background");
 }
 else
 {
+    setStartupStatus(STARTUP_WIFI, STARTUP_PORTAL);
+    setStartupStatus(STARTUP_NTP, STARTUP_SKIPPED);
+    setStartupStatus(STARTUP_WEATHER, STARTUP_SKIPPED);
+    setStartupStatus(STARTUP_TUYA, STARTUP_SKIPPED);
     Serial.println("WiFi Manager: PORTAL ACTIVE");
 }
 
 initSensors();
+setStartupStatus(
+    STARTUP_BME680,
+    bmeReadingOK ? STARTUP_OK : STARTUP_ERROR
+);
+setStartupStatus(
+    STARTUP_BH1750,
+    bh1750ReadingOK ? STARTUP_OK : STARTUP_ERROR
+);
 
-    // --------------------------------------------------------
-    // INITIAL DISPLAY
-    // --------------------------------------------------------
-    tft.fillScreen(COLOR_BG);
-    lastWiFiState = false;
-    if (!screenSaverActive)
-{
-    updateWiFiIndicator();
-}
-    if (getLocalTime(&timeinfo, 2000))
+lastLowerPanelChange = millis();
+
+    BaseType_t taskCreated = xTaskCreate(
+        networkServicesTask,
+        "NetworkServices",
+        12288,
+        nullptr,
+        1,
+        nullptr
+    );
+
+    if (taskCreated != pdPASS)
     {
-        updateClock(timeinfo);
-if (settingDate)
-{
-    updateDate(timeinfo);
-}
-drawColon(true);
+        Serial.println("ERROR: failed to start network services task");
+        setStartupStatus(STARTUP_WEATHER, STARTUP_ERROR);
+        setStartupStatus(STARTUP_TUYA, STARTUP_ERROR);
     }
-    drawWeather();
-    updateWeatherDisplay();
-    lastLowerPanelChange = millis();
 }
 // ============================================================
 // LOWER PANEL UPDATE
@@ -1582,7 +1641,55 @@ if (wifiManager.isConnected())
     webServer.handleClient();
 }
 
- 
+if (!timeSynchronized && wifiManager.isConnected() &&
+    getSyncedTime(timeinfo))
+{
+    timeSynchronized = true;
+    setStartupStatus(STARTUP_NTP, STARTUP_OK);
+    setStartupStatus(STARTUP_WEATHER, STARTUP_WAITING);
+    setStartupStatus(STARTUP_TUYA, STARTUP_BACKGROUND);
+    lastWeatherUpdate = millis() - WEATHER_UPDATE_INTERVAL;
+    lastTuyaUpdate = millis() - TUYA_UPDATE_INTERVAL;
+    Serial.println("Time synchronized");
+    Serial.printf(
+        "Current time: %02d:%02d:%02d\n",
+        timeinfo.tm_hour,
+        timeinfo.tm_min,
+        timeinfo.tm_sec
+    );
+}
+
+if (startupActive)
+{
+    if (!timeSynchronized && ntpStartedAt != 0 &&
+        millis() - ntpStartedAt >= 30000UL)
+    {
+        setStartupStatus(STARTUP_NTP, STARTUP_ERROR);
+        setStartupStatus(STARTUP_WEATHER, STARTUP_SKIPPED);
+        setStartupStatus(STARTUP_TUYA, STARTUP_SKIPPED);
+    }
+
+    refreshStartup();
+
+    if (isStartupComplete())
+    {
+        if (startupResultsAt == 0)
+            startupResultsAt = millis();
+
+        if (millis() - startupResultsAt >= 5000UL)
+        {
+            startupActive = false;
+            closeMenu();
+            return;
+        }
+    }
+    else
+        startupResultsAt = 0;
+
+    if (startupActive)
+        return;
+}
+
  // --------------------------------------------------------
  // TOUCH - HAP MENU DHE ABOUT
  // --------------------------------------------------------
@@ -1727,7 +1834,7 @@ if (screenSaverActive && !nightModeActive)
 
     tft.drawString(
         "MIRE SE VJEN",
-        240,
+        MAIN_CONTENT_CENTER_X,
         160
     );
 
@@ -1754,7 +1861,7 @@ if (screenSaverActive && !nightModeActive)
         // Force date redraw after screen saver
         lastDay = -1;
 
-        if (getLocalTime(&timeinfo, 1000))
+        if (getSyncedTime(timeinfo))
         {
             updateClock(timeinfo);
 
@@ -1816,7 +1923,7 @@ pirLastState = pirState;
             lastDigits[3] = -1;
             lastDay = -1;
 
-            if (getLocalTime(&timeinfo, 1000))
+            if (getSyncedTime(timeinfo))
             {
                 updateClock(timeinfo);
 
@@ -1892,7 +1999,7 @@ if (nightModeActive)
         lastDigits[3] = -1;
         lastDay = -1;
 
-        if (getLocalTime(&timeinfo, 1000))
+        if (getSyncedTime(timeinfo))
         {
             updateClock(timeinfo);
 
@@ -1922,7 +2029,7 @@ else
         // ----------------------------------------------------
         // CLOCK
         // ----------------------------------------------------
-        if (getLocalTime(&timeinfo, 1000))
+        if (getSyncedTime(timeinfo))
         {
             updateClock(timeinfo);
             if (settingDate)
@@ -1945,13 +2052,11 @@ else
         // ----------------------------------------------------
         // WEATHER
         // --------------------------------------------------------
-        if (millis() - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL)
+        if (weatherUpdatePending)
         {
-            lastWeatherUpdate = millis();
-            if (weather.update())
-            {
+            weatherUpdatePending = false;
+            if (!showingLocalSensors && settingWeather)
                 updateWeatherDisplay();
-            }
         }
         // ----------------------------------------------------
         // LOWER PANEL
@@ -1994,13 +2099,4 @@ if (!showingLocalSensors &&
     animateCloud();
 }
     }
-     // --------------------------------------------------------
-     // TUYA TH01
-     // --------------------------------------------------------
-if (millis() - lastTuyaUpdate >= TUYA_UPDATE_INTERVAL)
-{
-    lastTuyaUpdate = millis();
-    tuyaService.update();
-}
-
 }

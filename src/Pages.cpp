@@ -263,6 +263,10 @@ html += "}";
     html += ".grid{grid-template-columns:1fr;}";
     html += ".clock{font-size:38px;}";
     html += ".logo{font-size:25px;}";
+    html += ".nav{gap:7px;}";
+    html += ".nav a{flex:1 1 105px;text-align:center;padding:11px 8px;}";
+    html += ".info-row{gap:8px;flex-wrap:wrap;}";
+    html += ".info-value{text-align:left;overflow-wrap:anywhere;}";
     html += "}";
 
     html += "</style>";
@@ -281,6 +285,7 @@ html += "<a class='active' href='/'>Dashboard</a>";
 html += "<a href='/weather'>Weather</a>";
 html += "<a href='/tuya'>Tuya</a>";
 html += "<a href='/settings'>Settings</a>";
+html += "<a href='/logs'>Logs</a>";
 html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
@@ -766,6 +771,15 @@ html += "}";
     html += "margin-top:2px;";
     html += "}";
 
+    html += ".nav{";
+    html += "gap:7px;";
+    html += "}";
+    html += ".nav a{";
+    html += "flex:1 1 105px;";
+    html += "text-align:center;";
+    html += "padding:11px 8px;";
+    html += "}";
+
     html += "}";
     html += ".nav{";
 html += "display:flex;";
@@ -814,6 +828,7 @@ html += "<a href='/'>Dashboard</a>";
 html += "<a href='/weather'>Weather</a>";
 html += "<a href='/tuya'>Tuya</a>";
 html += "<a class='active' href='/settings'>Settings</a>";
+html += "<a href='/logs'>Logs</a>";
 html += "<a href='/api'>API Status</a>";
 html += "</div>";
 

@@ -1,4 +1,5 @@
 #include "Sensors.h"
+#include "SerialLog.h"
 
 // ------------------------------------------------------------
 // SENSOR OBJECTS
@@ -6,9 +7,13 @@
 
 Adafruit_BME680 bme;
 bool bme680OK = false;
+bool bmeReadingOK = false;
+unsigned long lastBmeReading = 0;
 
 BH1750 lightMeter;
 bool bh1750OK = false;
+bool bh1750ReadingOK = false;
+unsigned long lastLuxReading = 0;
 
 // ------------------------------------------------------------
 // SENSOR VALUES
@@ -91,12 +96,14 @@ void initSensors()
 
     if (bme680OK)
     {
-        if (bme.performReading())
+        bmeReadingOK = bme.performReading();
+        if (bmeReadingOK)
         {
             bmeTemp = bme.temperature;
             bmeHumidity = bme.humidity;
             bmePressure = bme.pressure / 100.0;
             bmeGas = bme.gas_resistance / 1000.0;
+            lastBmeReading = millis();
 
             Serial.print("BME680 Temperature: ");
             Serial.print(bmeTemp);
@@ -123,10 +130,18 @@ void initSensors()
     if (bh1750OK)
     {
         bh1750Lux = lightMeter.readLightLevel();
-
-        Serial.print("BH1750 Lux: ");
-        Serial.print(bh1750Lux);
-        Serial.println(" lx");
+        bh1750ReadingOK = bh1750Lux >= 0.0f;
+        if (bh1750ReadingOK)
+        {
+            lastLuxReading = millis();
+            Serial.print("BH1750 Lux: ");
+            Serial.print(bh1750Lux);
+            Serial.println(" lx");
+        }
+        else
+        {
+            Serial.println("BH1750 reading FAILED");
+        }
     }
 
     Serial.println("========================");
@@ -140,18 +155,23 @@ void updateLocalSensors()
 {
     if (bme680OK)
     {
-        if (bme.performReading())
+        bmeReadingOK = bme.performReading();
+        if (bmeReadingOK)
         {
             bmeTemp = bme.temperature;
             bmeHumidity = bme.humidity;
             bmePressure = bme.pressure / 100.0;
             bmeGas = bme.gas_resistance / 1000.0;
+            lastBmeReading = millis();
         }
     }
 
     if (bh1750OK)
     {
         bh1750Lux = lightMeter.readLightLevel();
+        bh1750ReadingOK = bh1750Lux >= 0.0f;
+        if (bh1750ReadingOK)
+            lastLuxReading = millis();
     }
 
     updateAirQuality();
@@ -163,7 +183,7 @@ void updateLocalSensors()
 
 void updateAirQuality()
 {
-    if (!bme680OK || bmeGas <= 0)
+    if (!bmeReadingOK || bmeGas <= 0)
         return;
 
     if (!airBaselineReady)

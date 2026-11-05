@@ -7,7 +7,37 @@
 #define STARTUP_BG      TFT_BLACK
 #define STARTUP_TEXT    TFT_WHITE
 #define STARTUP_ACCENT  TFT_CYAN
-#define STARTUP_OK      TFT_GREEN
+#define STARTUP_OK_COLOR TFT_GREEN
+#define STARTUP_ERROR_COLOR TFT_RED
+#define STARTUP_WAIT_COLOR  TFT_YELLOW
+
+static TFT_eSPI* startupDisplay = nullptr;
+static volatile StartupStatus statuses[STARTUP_ITEM_COUNT];
+static volatile bool startupNeedsRedraw = false;
+
+static const char* const labels[STARTUP_ITEM_COUNT] = {
+    "WiFi",
+    "BME680 SENSOR",
+    "BH1750 SENSOR",
+    "CLOCK / NTP",
+    "WEATHER SERVICE",
+    "TUYA CLOUD"
+};
+
+static const char* statusText(StartupStatus status)
+{
+    switch (status)
+    {
+        case STARTUP_CHECKING: return "CHECKING";
+        case STARTUP_OK: return "READY";
+        case STARTUP_ERROR: return "ERROR";
+        case STARTUP_PORTAL: return "SETUP PORTAL";
+        case STARTUP_SKIPPED: return "WAITING FOR WIFI";
+        case STARTUP_BACKGROUND: return "IN BACKGROUND";
+        case STARTUP_WAITING:
+        default: return "WAITING";
+    }
+}
 
 // ============================================================
 // CENTERED TEXT
@@ -39,32 +69,6 @@ void drawCentered(
 // BOOT LINE
 // ============================================================
 
-void drawBootLine(
-    TFT_eSPI* tft,
-    const char* text,
-    int y
-)
-{
-    tft->setTextFont(2);
-    tft->setTextSize(1);
-    tft->setTextColor(
-        STARTUP_TEXT,
-        STARTUP_BG
-    );
-
-    tft->setCursor(45, y);
-    tft->print(text);
-
-    tft->setTextColor(
-        STARTUP_OK,
-        STARTUP_BG
-    );
-
-    tft->setCursor(385, y);
-    tft->print("ONLINE");
-}
-
-
 // STARTUP FILM
 // ============================================================
 
@@ -73,12 +77,12 @@ void runStartup(TFT_eSPI* tft)
     if (tft == nullptr)
         return;
 
+    startupDisplay = tft;
+    for (int i = 0; i < STARTUP_ITEM_COUNT; i++)
+        statuses[i] = STARTUP_WAITING;
+    startupNeedsRedraw = true;
+
     tft->fillScreen(STARTUP_BG);
-
-    // --------------------------------------------------------
-    // TITLE
-    // --------------------------------------------------------
-
     drawCentered(
         tft,
         "ORA SYSTEM",
@@ -95,70 +99,60 @@ void runStartup(TFT_eSPI* tft)
         2
     );
 
-    delay(200);
+    refreshStartup();
+}
 
-    // --------------------------------------------------------
-    // SYSTEM LINES
-    // --------------------------------------------------------
+void setStartupStatus(StartupItem item, StartupStatus status)
+{
+    if (item < 0 || item >= STARTUP_ITEM_COUNT)
+        return;
 
-    drawBootLine(
-        tft,
-        "WiFi NETWORK",
-        125
-    );
+    statuses[item] = status;
+    startupNeedsRedraw = true;
+}
 
-    delay(200);
+void refreshStartup()
+{
+    if (startupDisplay == nullptr || !startupNeedsRedraw)
+        return;
 
-    drawBootLine(
-        tft,
-        "BME680 SENSOR",
-        150
-    );
+    startupNeedsRedraw = false;
+    startupDisplay->setTextFont(2);
+    startupDisplay->setTextSize(1);
 
-    delay(200);
+    for (int i = 0; i < STARTUP_ITEM_COUNT; i++)
+    {
+        int y = 125 + i * 25;
+        StartupStatus status = statuses[i];
+        uint16_t color = STARTUP_WAIT_COLOR;
 
-    drawBootLine(
-        tft,
-        "BH1750 LIGHT",
-        175
-    );
+        if (status == STARTUP_OK)
+            color = STARTUP_OK_COLOR;
+        else if (status == STARTUP_ERROR || status == STARTUP_PORTAL)
+            color = STARTUP_ERROR_COLOR;
 
-    delay(200);
+        startupDisplay->setTextColor(STARTUP_TEXT, STARTUP_BG);
+        startupDisplay->setCursor(45, y);
+        startupDisplay->print(labels[i]);
+        startupDisplay->fillRect(285, y - 2, 160, 20, STARTUP_BG);
+        startupDisplay->setTextColor(color, STARTUP_BG);
+        int width = startupDisplay->textWidth(statusText(status));
+        startupDisplay->setCursor(435 - width, y);
+        startupDisplay->print(statusText(status));
+    }
+}
 
-    drawBootLine(
-        tft,
-        "OPEN-METEO ENGINE",
-        200
-    );
+bool isStartupComplete()
+{
+    for (int i = 0; i < STARTUP_ITEM_COUNT; i++)
+    {
+        if (i == STARTUP_TUYA)
+            continue;
 
-    delay(200);
+        StartupStatus status = statuses[i];
+        if (status == STARTUP_WAITING || status == STARTUP_CHECKING)
+            return false;
+    }
 
-    drawBootLine(
-        tft,
-        "TUYA CLOUD",
-        225
-    );
-
-    delay(200);
-
-    // --------------------------------------------------------
-    // READY
-    // --------------------------------------------------------
-
-    drawCentered(
-        tft,
-        "TE GJITHA SISTEMET GATI",
-        260,
-        STARTUP_OK,
-        2
-    );
-
-    delay(200);
-
-    
-    // --------------------------------------------------------
-    // FINISHED
-    // --------------------------------------------------------
-
-    
+    return true;
 }

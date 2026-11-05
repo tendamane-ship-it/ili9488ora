@@ -1,4 +1,5 @@
 #include "ScreenSaver.h"
+#include "SerialLog.h"
 
 static TFT_eSPI* tftDisplay = nullptr;
 
