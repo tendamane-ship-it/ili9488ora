@@ -15,6 +15,9 @@
 #include <freertos/task.h>
 #include "WiFiManager.h"
 #include "SerialLog.h"
+#include "AboutScreen.h"
+#include "ClockDisplay.h"
+#include "WeatherDisplay.h"
 #define TOUCH_CS   17
 #define TOUCH_IRQ  14
 
@@ -32,6 +35,13 @@ TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
 volatile bool timeSynchronized = false;
 volatile bool weatherUpdatePending = false;
+volatile bool tuyaUpdatePending = false;
+volatile bool weatherServiceReady = false;
+volatile bool weatherServiceChecked = false;
+volatile bool tuyaServiceReady = false;
+volatile bool tuyaServiceChecked = false;
+volatile bool wifiGotIpPending = false;
+volatile bool networkServicesRefreshPending = false;
 bool startupActive = true;
 unsigned long startupStartedAt = 0;
 unsigned long startupResultsAt = 0;
@@ -84,357 +94,125 @@ const unsigned long ABOUT_TIMEOUT = 15000UL;
 unsigned long menuStartTime = 0;
 const unsigned long MENU_TIMEOUT = 30000UL;
 
-// Emrat e diteve ne shqip
-const char* days[] = {
-    "E diel",
-    "E hene",
-    "E marte",
-    "E merkure",
-    "E enjte",
-    "E premte",
-    "E shtune"
-};
-// Emrat e muajve ne shqip
-const char* months[] = {
-    "Janar",
-    "Shkurt",
-    "Mars",
-    "Prill",
-    "Maj",
-    "Qershor",
-    "Korrik",
-    "Gusht",
-    "Shtator",
-    "Tetor",
-    "Nentor",
-    "Dhjetor"
-};
-// ============================================================
-// CLOCK GEOMETRY
-// ============================================================
-#define DIGIT_W       84
-#define DIGIT_H       130
-#define SEG_THICK     13
-#define DIGIT_GAP     10
-#define CLOCK_Y       25
 const int MAIN_CONTENT_CENTER_X = 277;
-const int CLOCK_SHIFT_X = MAIN_CONTENT_CENTER_X - 237;
-const int COLON_X = 232 + CLOCK_SHIFT_X;
 // ============================================================
-// 7-SEGMENT DIGIT MAP
-// ============================================================
-const bool digitSegments[10][7] =
-{
-    { true,  true,  true,  true,  true,  true,  false }, // 0
-    { false, true,  true,  false, false, false, false }, // 1
-    { true,  true,  false, true,  true,  false, true  }, // 2
-    { true,  true,  true,  true,  false, false, true  }, // 3
-    { false, true,  true,  false, false, true,  true  }, // 4
-    { true,  false, true,  true,  false, true,  true  }, // 5
-    { true,  false, true,  true,  true,  true,  true  }, // 6
-    { true,  true,  true,  false, false, false, false }, // 7
-    { true,  true,  true,  true,  true,  true,  true  }, // 8
-    { true,  true,  true,  true,  false, true,  true  }  // 9
-};
-// ============================================================
-// DIGIT POSITION
-// ============================================================
-int getDigitX(int index)
-{
-    const int startX = 43 + CLOCK_SHIFT_X;
-    if (index == 0)
-        return startX;
-    if (index == 1)
-        return startX + DIGIT_W + DIGIT_GAP;
-    if (index == 2)
-        return startX + 2 * DIGIT_W + DIGIT_GAP + 32;
-    if (index == 3)
-        return startX + 3 * DIGIT_W + 2 * DIGIT_GAP + 32;
-    return startX;
-}
-// ============================================================
-// SEGMENTS - BEVELED / POINTED ENDS
-// ============================================================
-void drawHorizontalSegment(
-    int x,
-    int y,
-    int w,
-    int h,
-    uint16_t color
-)
-{
-    const int tip = 5;
-    tft.fillRect(
-        x + tip,
-        y,
-        w - 2 * tip,
-        h,
-        color
-    );
-    tft.fillTriangle(
-        x,
-        y + h / 2,
-        x + tip,
-        y,
-        x + tip,
-        y + h,
-        color
-    );
-    tft.fillTriangle(
-        x + w,
-        y + h / 2,
-        x + w - tip,
-        y,
-        x + w - tip,
-        y + h,
-        color
-    );
-}
-void drawVerticalSegment(
-    int x,
-    int y,
-    int w,
-    int h,
-    uint16_t color
-)
-{
-    const int tip = 5;
-    tft.fillRect(
-        x,
-        y + tip,
-        w,
-        h - 2 * tip,
-        color
-    );
-    tft.fillTriangle(
-        x + w / 2,
-        y,
-        x,
-        y + tip,
-        x + w,
-        y + tip,
-        color
-    );
-    tft.fillTriangle(
-        x,
-        y + h - tip,
-        x + w,
-        y + h - tip,
-        x + w / 2,
-        y + h,
-        color
-    );
-}
-// ============================================================
-// DRAW DIGIT
-// ============================================================
-void drawDigit(int x, int y, int number)
-{
-    tft.fillRect(
-        x - 2,
-        y - 2,
-        DIGIT_W + 4,
-        DIGIT_H + 4,
-        COLOR_BG
-    );
-    if (number < 0 || number > 9)
-        return;
-    const int verticalH = 52;
-    const int topY     = y;
-    const int middleY  = y + 59;
-    const int bottomY  = y + DIGIT_H - SEG_THICK;
-    const int leftX  = x;
-    const int rightX = x + DIGIT_W - SEG_THICK;
-    if (digitSegments[number][0])
-        drawHorizontalSegment(
-            x + 6,
-            topY,
-            DIGIT_W - 12,
-            SEG_THICK,
-            COLOR_TIME
-        );
-    if (digitSegments[number][1])
-        drawVerticalSegment(
-            rightX,
-            y + 6,
-            SEG_THICK,
-            verticalH,
-            COLOR_TIME
-        );
-    if (digitSegments[number][2])
-        drawVerticalSegment(
-            rightX,
-            y + 72,
-            SEG_THICK,
-            verticalH,
-            COLOR_TIME
-        );
-    if (digitSegments[number][3])
-        drawHorizontalSegment(
-            x + 6,
-            bottomY,
-            DIGIT_W - 12,
-            SEG_THICK,
-            COLOR_TIME
-        );
-    if (digitSegments[number][4])
-        drawVerticalSegment(
-            leftX,
-            y + 72,
-            SEG_THICK,
-            verticalH,
-            COLOR_TIME
-        );
-    if (digitSegments[number][5])
-        drawVerticalSegment(
-            leftX,
-            y + 6,
-            SEG_THICK,
-            verticalH,
-            COLOR_TIME
-        );
-    if (digitSegments[number][6])
-        drawHorizontalSegment(
-            x + 6,
-            middleY,
-            DIGIT_W - 12,
-            SEG_THICK,
-            COLOR_TIME
-        );
-}
-// ============================================================
-// COLON
-// ============================================================
-void drawColon(bool visible)
-{
-    tft.fillRect(
-        COLON_X - 5,
-        CLOCK_Y,
-        30,
-        DIGIT_H,
-        COLOR_BG
-    );
-    if (!visible)
-        return;
-    tft.fillCircle(
-        COLON_X + 5,
-        CLOCK_Y + 43,
-        7,
-        COLOR_TIME
-    );
-    tft.fillCircle(
-        COLON_X + 5,
-        CLOCK_Y + 88,
-        7,
-        COLOR_TIME
-    );
-}
-
-
-// CLOCK UPDATE
-// ============================================================
-int lastDigits[4] = { -1, -1, -1, -1 };
-void updateClock(struct tm& timeinfo)
-{
-    int digits[4];
-    int hour = timeinfo.tm_hour;
-    if (!setting24Hour)
-    {
-        hour = hour % 12;
-        if (hour == 0)
-            hour = 12;
-    }
-    digits[0] = (!setting24Hour && hour < 10) ? -1 : hour / 10;
-    digits[1] = hour % 10;
-    digits[2] = timeinfo.tm_min / 10;
-    digits[3] = timeinfo.tm_min % 10;
-    for (int i = 0; i < 4; i++)
-    {
-        if (digits[i] != lastDigits[i])
-        {
-            drawDigit(
-                getDigitX(i),
-                CLOCK_Y,
-                digits[i]
-            );
-            lastDigits[i] = digits[i];
-        }
-    }
-}
-
-// ============================================================
-// DATE
-// ============================================================
-int lastDay = -1;
-void updateDate(struct tm& timeinfo)
-{
-    if (timeinfo.tm_mday == lastDay)
-        return;
-    lastDay = timeinfo.tm_mday;
-    tft.fillRect(
-        0,
-        185,
-        480,
-        55,
-        COLOR_BG
-    );
-    char dateText[50];
-    snprintf(
-        dateText,
-        sizeof(dateText),
-        "%s, %02d %s %d",
-        days[timeinfo.tm_wday],
-        timeinfo.tm_mday,
-        months[timeinfo.tm_mon],
-        timeinfo.tm_year + 1900
-    );
-    tft.setTextColor(
-        COLOR_TIME,
-        COLOR_BG
-    );
-    tft.setTextFont(4);
-    int textWidth = tft.textWidth(dateText);
-    tft.setCursor(
-        MAIN_CONTENT_CENTER_X - textWidth / 2,
-        187
-    );
-    tft.print(dateText);
-}
-
-// ============================================================
-// WIFI INDICATOR
+// NETWORK INDICATORS
 // ============================================================
 bool lastWiFiState = false;
-void updateWiFiIndicator()
+bool lastNtpState = false;
+bool lastBmeState = false;
+bool lastBh1750State = false;
+int lastPirIndicatorState = -1;
+int lastWeatherIndicatorState = -1;
+int lastTuyaIndicatorState = -1;
+bool networkIndicatorsDrawn = false;
+
+void drawMainDividers()
 {
-    bool connected = WiFi.status() == WL_CONNECTED;
-    if (connected == lastWiFiState)
+    tft.drawFastVLine(68, 0, 241, TFT_DARKGREY);
+    tft.drawFastHLine(0, 242, 480, TFT_DARKGREY);
+}
+
+void drawWiFiIcon(uint16_t color)
+{
+    tft.drawLine(2, 63, 5, 60, color);
+    tft.drawLine(5, 60, 9, 59, color);
+    tft.drawLine(9, 59, 13, 60, color);
+    tft.drawLine(13, 60, 16, 63, color);
+    tft.drawLine(5, 64, 7, 62, color);
+    tft.drawLine(7, 62, 9, 61, color);
+    tft.drawLine(9, 61, 11, 62, color);
+    tft.drawLine(11, 62, 13, 64, color);
+    tft.fillCircle(9, 67, 2, color);
+}
+
+void updateNetworkIndicators(bool force = false)
+{
+    bool wifiConnected = WiFi.status() == WL_CONNECTED;
+    bool ntpSynchronized = timeSynchronized;
+    bool bmeAvailable = bme680OK && bmeReadingOK;
+    bool bh1750Available = bh1750OK && bh1750ReadingOK;
+    int pirIndicatorState = !settingPIR
+        ? 0
+        : (pirState == HIGH ? 2 : 1);
+    int weatherIndicatorState = weatherServiceReady
+        ? 2
+        : (weatherServiceChecked ? 0 : 1);
+    int tuyaIndicatorState = tuyaServiceReady
+        ? 2
+        : (tuyaServiceChecked ? 0 : 1);
+    if (!force &&
+        networkIndicatorsDrawn &&
+        wifiConnected == lastWiFiState &&
+        ntpSynchronized == lastNtpState &&
+        bmeAvailable == lastBmeState &&
+        bh1750Available == lastBh1750State &&
+        pirIndicatorState == lastPirIndicatorState &&
+        weatherIndicatorState == lastWeatherIndicatorState &&
+        tuyaIndicatorState == lastTuyaIndicatorState)
         return;
-    lastWiFiState = connected;
-    tft.fillCircle(
-        15,
-        15,
-        7,
-        COLOR_BG
-    );
-    if (connected)
-    {
-        tft.fillCircle(
-            15,
-            15,
-            5,
-            COLOR_WIFI
-        );
-    }
-    else
-    {
-        tft.drawCircle(
-            15,
-            15,
-            5,
-            TFT_RED
-        );
-    }
+
+    lastWiFiState = wifiConnected;
+    lastNtpState = ntpSynchronized;
+    lastBmeState = bmeAvailable;
+    lastBh1750State = bh1750Available;
+    lastPirIndicatorState = pirIndicatorState;
+    lastWeatherIndicatorState = weatherIndicatorState;
+    lastTuyaIndicatorState = tuyaIndicatorState;
+    networkIndicatorsDrawn = true;
+
+    uint16_t wifiColor = wifiConnected ? COLOR_WIFI : TFT_RED;
+    uint16_t ntpColor = ntpSynchronized
+        ? TFT_GREEN
+        : (wifiConnected ? TFT_YELLOW : TFT_RED);
+    uint16_t bmeColor = bmeAvailable ? TFT_GREEN : TFT_RED;
+    uint16_t bh1750Color = bh1750Available ? TFT_GREEN : TFT_RED;
+    uint16_t pirColor = pirIndicatorState == 0
+        ? TFT_DARKGREY
+        : (pirIndicatorState == 2 ? TFT_YELLOW : TFT_GREEN);
+    uint16_t weatherColor = weatherIndicatorState == 2
+        ? TFT_GREEN
+        : (weatherIndicatorState == 1 ? TFT_YELLOW : TFT_RED);
+    uint16_t tuyaColor = tuyaIndicatorState == 2
+        ? TFT_GREEN
+        : (tuyaIndicatorState == 1 ? TFT_YELLOW : TFT_RED);
+
+    tft.fillRect(0, 50, 70, 132, COLOR_BG);
+    drawWiFiIcon(wifiColor);
+    tft.drawCircle(9, 79, 5, ntpColor);
+    tft.drawLine(9, 79, 9, 76, ntpColor);
+    tft.drawLine(9, 79, 12, 81, ntpColor);
+    tft.fillCircle(9, 97, 4, bmeColor);
+    tft.fillCircle(9, 115, 4, bh1750Color);
+    tft.fillCircle(9, 133, 4, pirColor);
+    tft.fillCircle(9, 151, 4, weatherColor);
+    tft.fillCircle(9, 169, 4, tuyaColor);
+
+    tft.setTextFont(1);
+    tft.setTextSize(1);
+    tft.setTextColor(wifiColor, COLOR_BG);
+    tft.setCursor(19, 57);
+    tft.print("WiFi");
+    tft.setTextColor(ntpColor, COLOR_BG);
+    tft.setCursor(19, 75);
+    tft.print("NTP");
+    tft.setTextColor(bmeColor, COLOR_BG);
+    tft.setCursor(19, 93);
+    tft.print("BME680");
+    tft.setTextColor(bh1750Color, COLOR_BG);
+    tft.setCursor(19, 111);
+    tft.print("BH1750");
+    tft.setTextColor(pirColor, COLOR_BG);
+    tft.setCursor(19, 129);
+    tft.print("PIR");
+    tft.setTextColor(weatherColor, COLOR_BG);
+    tft.setCursor(19, 147);
+    tft.print("MOTI");
+    tft.setTextColor(tuyaColor, COLOR_BG);
+    tft.setCursor(19, 165);
+    tft.print("TUYA");
+
+    drawMainDividers();
 }
 
 // ============================================================
@@ -447,32 +225,26 @@ void updateWiFiIndicator()
 // ============================================================
 #define LOWER_PANEL_INTERVAL 10000UL
 bool showingLocalSensors = false;
+bool showingTuyaData = false;
+bool lowerPanelHasContent = false;
 unsigned long lastLowerPanelChange = 0;
 unsigned long lastWeatherUpdate = 0;
-unsigned long lastRainAnimation = 0;
-int rainFrame = 0;
-unsigned long lastSunAnimation = 0;
-int sunFrame = 0;
-unsigned long lastLightningAnimation = 0;
-int lightningFrame = 0;
-unsigned long lastCloudAnimation = 0;
-int cloudFrame = 0;
 // ============================================================
 // MENU ICON
 // ============================================================
 void drawMenuIcon()
 {
     tft.fillRect(
-        8,
-        35,
-        55,
-        38,
+        0,
+        24,
+        43,
+        26,
         COLOR_BG
     );
 
-tft.drawLine(5, 41, 35, 41, TFT_WHITE);
-tft.drawLine(5, 49, 35, 49, TFT_WHITE);
-tft.drawLine(5, 57, 35, 57, TFT_WHITE);
+    tft.drawLine(5, 28, 35, 28, TFT_WHITE);
+    tft.drawLine(5, 36, 35, 36, TFT_WHITE);
+    tft.drawLine(5, 44, 35, 44, TFT_WHITE);
 }
 void drawMainMenu()
 {
@@ -532,40 +304,34 @@ void drawMainMenu()
 }
 void drawAbout()
 {
-    tft.fillScreen(COLOR_BG);
-
-    tft.setTextDatum(MC_DATUM);
-
-    // Titulli
-    tft.setTextColor(TFT_CYAN, COLOR_BG);
-    tft.setTextFont(4);
-    tft.setTextSize(1);
-    tft.drawString("ORA", 240, 30);
-
-    // Version
-    tft.setTextColor(TFT_WHITE, COLOR_BG);
-    tft.setTextFont(2);
-    tft.drawString("Version 1.1.7", 240, 65);
-
-    // Hardware / services
-    tft.setTextColor(TFT_WHITE, COLOR_BG);
-
-    tft.drawString("BME680",       240, 105);
-    tft.drawString("BH1750",       240, 130);
-    tft.drawString("PIR",          240, 155);
-    tft.drawString("Open-Meteo",   240, 180);
-    tft.drawString("Tuya Cloud",   240, 205);
-
-    // Author
-    tft.setTextColor(TFT_CYAN, COLOR_BG);
-    tft.drawString("Created by Murat Mane", 240, 250);
-
-    // Back
-    tft.setTextColor(TFT_WHITE, COLOR_BG);
-    tft.drawRect(180, 275, 120, 32, TFT_WHITE);
-    tft.drawString("BACK", 240, 291);
-
-    tft.setTextDatum(TL_DATUM);
+    const WeatherData weatherData = weather.getData();
+    const bool wifiConnected = WiFi.status() == WL_CONNECTED;
+    const bool tuyaOnline = tuyaService.isOnline();
+    AboutScreenData data{};
+    data.wifiConnected = wifiConnected;
+    data.ipAddress = wifiConnected ? WiFi.localIP().toString() : "DISCONNECTED";
+    data.wifiRssi = wifiConnected ? WiFi.RSSI() : 0;
+    data.timeSynchronized = timeSynchronized;
+    data.bmeFound = bme680OK;
+    data.bmeAvailable = bme680OK && bmeReadingOK;
+    data.bmeTemperature = bmeTemp;
+    data.bmeHumidity = bmeHumidity;
+    data.lightSensorFound = bh1750OK;
+    data.lightSensorAvailable = bh1750OK && bh1750ReadingOK;
+    data.lightLevel = bh1750Lux;
+    data.pirEnabled = settingPIR;
+    data.localDisplayEnabled = settingLightSensor;
+    data.weatherReady = weatherServiceReady;
+    data.weatherValid = weatherData.valid;
+    data.weatherTemperature = weatherData.temperature;
+    data.tuyaOnline = tuyaOnline;
+    data.tuyaTemperature = tuyaOnline ? tuyaService.getTemperature() : 0;
+    data.tuyaHumidity = tuyaOnline ? tuyaService.getHumidity() : 0;
+    data.tuyaBattery = tuyaOnline ? tuyaService.getBattery() : 0;
+    data.weatherDisplayEnabled = settingWeather;
+    data.tuyaDisplayEnabled = settingTuyaDisplay;
+    data.freeHeapKb = ESP.getFreeHeap() / 1024;
+    drawAboutScreen(tft, data);
 }
 void openMenu()
 {
@@ -587,699 +353,22 @@ void closeMenu()
 
     tft.fillScreen(COLOR_BG);
 
-    lastDigits[0] = -1;
-    lastDigits[1] = -1;
-    lastDigits[2] = -1;
-    lastDigits[3] = -1;
-    lastDay = -1;
+    resetClockDisplay();
 
     if (getSyncedTime(timeinfo))
     {
-        updateClock(timeinfo);
+        updateClockDisplay(tft, timeinfo, setting24Hour);
 
         if (settingDate)
-            updateDate(timeinfo);
+            updateDateDisplay(tft, timeinfo);
 
         bool visible = (timeinfo.tm_sec % 2 == 0);
-        drawColon(visible);
+        drawClockColon(tft, visible);
     }
 
-    lastWiFiState = false;
-    updateWiFiIndicator();
     updateLowerPanel();
     drawMenuIcon();
-}
-// ============================================================
-// WEATHER DISPLAY
-// ============================================================
-void drawWeather()
-{
-    // Clear weather area
-    tft.fillRect(
-        0,
-        WEATHER_Y,
-        480,
-        75,
-        COLOR_BG
-    );
-    // Menu icon
-    drawMenuIcon();
-}
-void drawCloud()
-{
-    const int cx = 40;
-    const int cy = WEATHER_Y + 37;
-
-    // Trupi i rrumbullakosur i resë
-    tft.fillCircle(cx - 9, cy + 4, 9, TFT_LIGHTGREY);
-    tft.fillCircle(cx + 3, cy - 2, 12, TFT_LIGHTGREY);
-    tft.fillCircle(cx + 14, cy + 5, 8, TFT_LIGHTGREY);
-
-    // Mbushja e pjesës së poshtme
-    tft.fillRect(
-        cx - 9,
-        cy + 4,
-        23,
-        9,
-        TFT_LIGHTGREY
-    );
-
-    // Rrumbullakosim skajet e poshtme
-    tft.fillCircle(cx - 9, cy + 9, 5, TFT_LIGHTGREY);
-    tft.fillCircle(cx + 14, cy + 9, 5, TFT_LIGHTGREY);
-}
-// ============================================================
-// WEATHER ICON
-// ============================================================
-
-void drawWeatherIcon()
-{
-    int cx = 40;
-    int cy = WEATHER_Y + 37;
-    int code = weather.getData().weatherCode;
-
-    // =========================
-    // CLEAR SKY
-    // =========================
-    if (code == 0)
-    {
-        tft.fillCircle(
-            cx,
-            cy,
-            10,
-            TFT_YELLOW
-        );
-
-        // Rrezet
-        tft.drawLine(
-            cx, cy - 17,
-            cx, cy - 11,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx, cy + 11,
-            cx, cy + 17,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx - 17, cy,
-            cx - 11, cy,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx + 11, cy,
-            cx + 17, cy,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx - 12, cy - 12,
-            cx - 8, cy - 8,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx + 8, cy - 8,
-            cx + 12, cy - 12,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx - 12, cy + 12,
-            cx - 8, cy + 8,
-            TFT_YELLOW
-        );
-
-        tft.drawLine(
-            cx + 8, cy + 8,
-            cx + 12, cy + 12,
-            TFT_YELLOW
-        );
-    }
-
-    // =========================
-    // CLOUDY
-    // =========================
-    else if (code >= 1 && code <= 3)
-    {
-       drawCloud();
-    }
-
-    // =========================
-    // FOG
-    // =========================
-    else if (code >= 45 && code <= 48)
-    {
-        tft.drawLine(
-            cx - 18, cy - 8,
-            cx + 18, cy - 8,
-            TFT_LIGHTGREY
-        );
-
-        tft.drawLine(
-            cx - 22, cy,
-            cx + 14, cy,
-            TFT_LIGHTGREY
-        );
-
-        tft.drawLine(
-            cx - 18, cy + 8,
-            cx + 18, cy + 8,
-            TFT_LIGHTGREY
-        );
-    }
-
-    // =========================
-    // RAIN
-    // =========================
-    else if (code >= 51 && code <= 67)
-{
-    drawCloud();
-
-        // Pikat e shiut
-        tft.drawLine(
-            cx - 10, cy + 15,
-            cx - 13, cy + 23,
-            TFT_CYAN
-        );
-
-        tft.drawLine(
-            cx, cy + 15,
-            cx - 3, cy + 23,
-            TFT_CYAN
-        );
-
-        tft.drawLine(
-            cx + 10, cy + 15,
-            cx + 7, cy + 23,
-            TFT_CYAN
-        );
-    }
-
-    // =========================
-    // SNOW
-    // =========================
-    else if (code >= 71 && code <= 77)
-    {
-        // Re
-        tft.fillCircle(
-            cx - 9,
-            cy - 1,
-            9,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 3,
-            cy - 6,
-            12,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 14,
-            cy,
-            8,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillRect(
-            cx - 17,
-            cy,
-            39,
-            11,
-            TFT_LIGHTGREY
-        );
-
-        // Floket
-        tft.fillCircle(
-            cx - 9,
-            cy + 19,
-            3,
-            TFT_WHITE
-        );
-
-        tft.fillCircle(
-            cx + 2,
-            cy + 23,
-            3,
-            TFT_WHITE
-        );
-
-        tft.fillCircle(
-            cx + 12,
-            cy + 18,
-            3,
-            TFT_WHITE
-        );
-    }
-
-    // =========================
-    // SHOWERS
-    // =========================
-    else if (code >= 80 && code <= 82)
-    {
-       drawCloud();
-
-        // Shi
-        tft.drawLine(
-            cx - 9, cy + 15,
-            cx - 12, cy + 23,
-            TFT_CYAN
-        );
-
-        tft.drawLine(
-            cx + 1, cy + 15,
-            cx - 2, cy + 23,
-            TFT_CYAN
-        );
-
-        tft.drawLine(
-            cx + 11, cy + 15,
-            cx + 8, cy + 23,
-            TFT_CYAN
-        );
-    }
-
-    // =========================
-    // SNOW SHOWERS
-    // =========================
-    else if (code >= 85 && code <= 86)
-    {
-        tft.fillCircle(
-            cx - 9,
-            cy - 1,
-            9,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 3,
-            cy - 6,
-            12,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx + 14,
-            cy,
-            8,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillRect(
-            cx - 17,
-            cy,
-            39,
-            11,
-            TFT_LIGHTGREY
-        );
-
-        tft.fillCircle(
-            cx - 8,
-            cy + 19,
-            3,
-            TFT_WHITE
-        );
-
-        tft.fillCircle(
-            cx + 3,
-            cy + 23,
-            3,
-            TFT_WHITE
-        );
-
-        tft.fillCircle(
-            cx + 13,
-            cy + 18,
-            3,
-            TFT_WHITE
-        );
-    }
-
-    // =========================
-    // THUNDERSTORM
-    // =========================
-    else if (code >= 95 && code <= 99)
-    {drawCloud();
-
-        // Rrufe
-        tft.fillTriangle(
-            cx + 1, cy + 10,
-            cx - 6, cy + 22,
-            cx + 1, cy + 19,
-            TFT_YELLOW
-        );
-
-        tft.fillTriangle(
-            cx + 1, cy + 19,
-            cx + 8, cy + 19,
-            cx + 1, cy + 29,
-            TFT_YELLOW
-        );
-    }
-
-    // =========================
-    // UNKNOWN
-    // =========================
-    else
-    {
-        tft.drawCircle(
-            cx,
-            cy,
-            12,
-            TFT_WHITE
-        );
-
-        tft.drawLine(
-            cx - 6,
-            cy,
-            cx + 6,
-            cy,
-            TFT_WHITE
-        );
-    }
-}
-
-// ============================================================
-// WEATHER DATA DISPLAY
-// ============================================================
-void animateRainDrops()
-{
-    int code = weather.getData().weatherCode;
-
-    // Vetëm shi dhe showers
-    if (!((code >= 51 && code <= 67) ||
-          (code >= 80 && code <= 82)))
-    {
-        return;
-    }
-
-    const int cx = 40;
-    const int cy = WEATHER_Y + 37;
-
-    // Pastro vetëm zonën e pikave të shiut
-    tft.fillRect(
-        cx - 18,
-        cy + 15,
-        40,
-        21,
-        COLOR_BG
-    );
-
-    int drop1 = rainFrame;
-    int drop2 = (rainFrame + 4) % 12;
-    int drop3 = (rainFrame + 8) % 12;
-
-    tft.drawLine(
-        cx - 9,
-        cy + 15 + drop1,
-        cx - 12,
-        cy + 21 + drop1,
-        TFT_CYAN
-    );
-
-    tft.drawLine(
-        cx + 1,
-        cy + 15 + drop2,
-        cx - 2,
-        cy + 21 + drop2,
-        TFT_CYAN
-    );
-
-    tft.drawLine(
-        cx + 11,
-        cy + 15 + drop3,
-        cx + 8,
-        cy + 21 + drop3,
-        TFT_CYAN
-    );
-
-    rainFrame++;
-
-    if (rainFrame >= 12)
-        rainFrame = 0;
-}
-void animateSun()
-{
-    int code = weather.getData().weatherCode;
-
-    // Vetëm clear sky
-    if (code != 0)
-        return;
-
-    const int cx = 40;
-    const int cy = WEATHER_Y + 37;
-
-    // Gjatësia e rrezes së vjetër
-    int oldOuter = 17 + sunFrame;
-
-    // Fshi vetëm rrezet e vjetra
-    tft.drawLine(cx, cy - 12, cx, cy - oldOuter, COLOR_BG);
-    tft.drawLine(cx, cy + 12, cx, cy + oldOuter, COLOR_BG);
-
-    tft.drawLine(cx - 12, cy, cx - oldOuter, cy, COLOR_BG);
-    tft.drawLine(cx + 12, cy, cx + oldOuter, cy, COLOR_BG);
-
-    tft.drawLine(cx - 8, cy - 8,
-                 cx - oldOuter + 5, cy - oldOuter + 5, COLOR_BG);
-
-    tft.drawLine(cx + 8, cy - 8,
-                 cx + oldOuter - 5, cy - oldOuter + 5, COLOR_BG);
-
-    tft.drawLine(cx - 8, cy + 8,
-                 cx - oldOuter + 5, cy + oldOuter - 5, COLOR_BG);
-
-    tft.drawLine(cx + 8, cy + 8,
-                 cx + oldOuter - 5, cy + oldOuter - 5, COLOR_BG);
-
-    // Kalo në frame tjetër
-    sunFrame++;
-
-    if (sunFrame > 2)
-        sunFrame = 0;
-
-    int newOuter = 17 + sunFrame;
-
-    // Vizato vetëm rrezet e reja
-    tft.drawLine(cx, cy - 12, cx, cy - newOuter, TFT_YELLOW);
-    tft.drawLine(cx, cy + 12, cx, cy + newOuter, TFT_YELLOW);
-
-    tft.drawLine(cx - 12, cy, cx - newOuter, cy, TFT_YELLOW);
-    tft.drawLine(cx + 12, cy, cx + newOuter, cy, TFT_YELLOW);
-
-    tft.drawLine(cx - 8, cy - 8,
-                 cx - newOuter + 5, cy - newOuter + 5, TFT_YELLOW);
-
-    tft.drawLine(cx + 8, cy - 8,
-                 cx + newOuter - 5, cy - newOuter + 5, TFT_YELLOW);
-
-    tft.drawLine(cx - 8, cy + 8,
-                 cx - newOuter + 5, cy + newOuter - 5, TFT_YELLOW);
-
-    tft.drawLine(cx + 8, cy + 8,
-                 cx + newOuter - 5, cy + newOuter - 5, TFT_YELLOW);
-}
-void animateLightning()
-{
-    int code = weather.getData().weatherCode;
-
-    // Vetëm thunderstorm
-    if (code < 95 || code > 99)
-        return;
-
-    const int cx = 40;
-    const int cy = WEATHER_Y + 37;
-
-    // Rrufeja pulson: një frame fikur, një frame ndezur
-    if (lightningFrame == 0)
-    {
-        tft.fillTriangle(
-            cx + 1, cy + 10,
-            cx - 6, cy + 22,
-            cx + 1, cy + 19,
-            COLOR_BG
-        );
-
-        tft.fillTriangle(
-            cx + 1, cy + 19,
-            cx + 8, cy + 19,
-            cx + 1, cy + 29,
-            COLOR_BG
-        );
-    }
-    else
-    {
-        tft.fillTriangle(
-            cx + 1, cy + 10,
-            cx - 6, cy + 22,
-            cx + 1, cy + 19,
-            TFT_YELLOW
-        );
-
-        tft.fillTriangle(
-            cx + 1, cy + 19,
-            cx + 8, cy + 19,
-            cx + 1, cy + 29,
-            TFT_YELLOW
-        );
-    }
-
-    lightningFrame++;
-
-    if (lightningFrame >= 2)
-        lightningFrame = 0;
-}
-void animateCloud()
-{
-    // Reja është statike.
-    return;
-}
-void updateWeatherDisplay()
-{
-    if (!weather.getData().valid)
-        return;
-
-    const WeatherData& data = weather.getData();
-
-    // Clear weather data area
-    tft.fillRect(
-        75,
-        WEATHER_Y,
-        405,
-        75,
-        COLOR_BG
-    );
-
-    // Titulli
-    tft.setTextColor(
-        TFT_WHITE,
-        COLOR_BG
-    );
-
-    tft.setTextFont(2);
-    tft.setTextDatum(MC_DATUM);
-
-    tft.drawString(
-        "Moti ne Sarande",
-        277,
-        WEATHER_Y + 7
-    );
-
-    tft.setTextDatum(TL_DATUM);
-
-    // Weather icon
-    drawWeatherIcon();
-
-    tft.setTextColor(
-        TFT_WHITE,
-        COLOR_BG
-    );
-
-    tft.setTextFont(4);
-
-    // --------------------------------------------------------
-    // TEMPERATURE
-    // --------------------------------------------------------
-
-    char tempText[20];
-
-    snprintf(
-        tempText,
-        sizeof(tempText),
-        "Temp: %.1f °C",
-        data.temperature
-    );
-
-    tft.setTextColor(
-        TFT_ORANGE,
-        COLOR_BG
-    );
-
-    tft.setCursor(
-        85,
-        WEATHER_Y + 25
-    );
-
-    tft.print(tempText);
-
-    // --------------------------------------------------------
-    // HUMIDITY
-    // --------------------------------------------------------
-
-    char humidityText[20];
-
-    snprintf(
-        humidityText,
-        sizeof(humidityText),
-        "Lag: %.0f%%",
-        data.humidity
-    );
-
-    tft.setTextColor(
-        TFT_CYAN,
-        COLOR_BG
-    );
-
-    tft.setCursor(
-        85,
-        WEATHER_Y + 52
-    );
-
-    tft.print(humidityText);
-
-    // --------------------------------------------------------
-    // WIND
-    // --------------------------------------------------------
-
-    char windText[20];
-
-    snprintf(
-        windText,
-        sizeof(windText),
-        "Era: %.1f km/h",
-        data.windSpeed
-    );
-
-    tft.setTextColor(
-        TFT_GREEN,
-        COLOR_BG
-    );
-
-    tft.setCursor(
-        285,
-        WEATHER_Y + 25
-    );
-
-    tft.print(windText);
-
-    // --------------------------------------------------------
-    // PRESSURE
-    // --------------------------------------------------------
-
-    char pressureText[20];
-
-    snprintf(
-        pressureText,
-        sizeof(pressureText),
-        "Pres: %.0fhPa",
-        data.pressure
-    );
-
-    tft.setTextColor(
-        TFT_MAGENTA,
-        COLOR_BG
-    );
-
-    tft.setCursor(
-        285,
-        WEATHER_Y + 52
-    );
-
-    tft.print(pressureText);
+    updateNetworkIndicators(true);
 }
 // ============================================================
 // LOCAL SENSORS DISPLAY
@@ -1392,21 +481,106 @@ void updateLocalSensorsDisplay()
             tft.print("AIR: POOR");
     }
 }
+void updateTuyaDisplay()
+{
+    tft.fillRect(
+        75,
+        WEATHER_Y,
+        405,
+        75,
+        COLOR_BG
+    );
+
+    tft.setTextDatum(MC_DATUM);
+    tft.setTextFont(2);
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.drawString("TUYA", 277, WEATHER_Y + 8);
+
+    tft.setTextFont(4);
+    if (tuyaService.isOnline())
+    {
+        char temperatureText[32];
+        char statusText[40];
+        snprintf(
+            temperatureText,
+            sizeof(temperatureText),
+            "Temp: %.1f C",
+            tuyaService.getTemperature()
+        );
+        snprintf(
+            statusText,
+            sizeof(statusText),
+            "Lag: %.0f%%  Bat: %d%%",
+            tuyaService.getHumidity(),
+            tuyaService.getBattery()
+        );
+        tft.setTextColor(TFT_CYAN, COLOR_BG);
+        tft.drawString(temperatureText, 277, WEATHER_Y + 31);
+        tft.drawString(statusText, 277, WEATHER_Y + 59);
+    }
+    else
+    {
+        tft.setTextColor(TFT_RED, COLOR_BG);
+        tft.drawString("Offline", 277, WEATHER_Y + 47);
+    }
+
+    tft.setTextDatum(TL_DATUM);
+}
+
+void renderLowerPanel()
+{
+    tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
+    if (showingTuyaData)
+        updateTuyaDisplay();
+    else if (showingLocalSensors)
+        updateLocalSensorsDisplay();
+    else if (settingWeather)
+        drawWeatherDisplay(tft, weather.getData());
+    lowerPanelHasContent = true;
+    lastLowerPanelChange = millis();
+}
+
 void updateLowerPanel();
 void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
     if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
         Serial.print("WiFi disconnect reason: ");
         Serial.println(info.wifi_sta_disconnected.reason);
+    } else if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+        wifiGotIpPending = true;
+        Serial.print("WiFi got IP: ");
+        Serial.println(WiFi.localIP());
     }
 }
 
 void networkServicesTask(void* parameter)
 {
     (void)parameter;
+    bool wasConnected = true;
 
     for (;;)
     {
-        if (timeSynchronized && wifiManager.isConnected())
+        bool connected = wifiManager.isConnected();
+        if (!connected)
+        {
+            if (wasConnected)
+            {
+                weatherServiceReady = false;
+                tuyaServiceReady = false;
+            }
+            wasConnected = false;
+            vTaskDelay(pdMS_TO_TICKS(100));
+            continue;
+        }
+
+        wasConnected = true;
+        if (timeSynchronized && networkServicesRefreshPending)
+        {
+            networkServicesRefreshPending = false;
+            lastWeatherUpdate = millis() - WEATHER_UPDATE_INTERVAL;
+            lastTuyaUpdate = millis() - TUYA_UPDATE_INTERVAL;
+        }
+
+        if (timeSynchronized)
         {
             unsigned long now = millis();
 
@@ -1416,11 +590,15 @@ void networkServicesTask(void* parameter)
                 setStartupStatus(STARTUP_WEATHER, STARTUP_CHECKING);
                 if (weather.update())
                 {
+                    weatherServiceReady = true;
+                    weatherServiceChecked = true;
                     weatherUpdatePending = true;
                     setStartupStatus(STARTUP_WEATHER, STARTUP_OK);
                 }
                 else
                 {
+                    weatherServiceReady = false;
+                    weatherServiceChecked = true;
                     setStartupStatus(STARTUP_WEATHER, STARTUP_ERROR);
                 }
             }
@@ -1430,9 +608,12 @@ void networkServicesTask(void* parameter)
             {
                 lastTuyaUpdate = now;
                 setStartupStatus(STARTUP_TUYA, STARTUP_CHECKING);
+                tuyaServiceReady = tuyaService.update();
+                tuyaServiceChecked = true;
+                tuyaUpdatePending = true;
                 setStartupStatus(
                     STARTUP_TUYA,
-                    tuyaService.update() ? STARTUP_OK : STARTUP_ERROR
+                    tuyaServiceReady ? STARTUP_OK : STARTUP_ERROR
                 );
             }
         }
@@ -1589,43 +770,58 @@ lastLowerPanelChange = millis();
 // ============================================================
 void updateLowerPanel()
 {
-    if (settingWeather && settingLightSensor)
-    {
-        unsigned long displayTime =
-            showingLocalSensors
-                ? localSensorsDisplayTime
-                : weatherDisplayTime;
+    int currentPanel = showingTuyaData ? 2 : (showingLocalSensors ? 1 : 0);
+    bool enabled[3] = {
+        settingWeather,
+        settingLightSensor,
+        settingTuyaDisplay
+    };
+    bool anyEnabled = enabled[0] || enabled[1] || enabled[2];
 
+    if (!anyEnabled)
+    {
+        if (lowerPanelHasContent)
+            tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
+        lowerPanelHasContent = false;
+        showingLocalSensors = false;
+        showingTuyaData = false;
+        return;
+    }
+
+    if (!enabled[currentPanel])
+    {
+        int nextPanel = 0;
+        while (!enabled[nextPanel])
+            ++nextPanel;
+        showingLocalSensors = nextPanel == 1;
+        showingTuyaData = nextPanel == 2;
+        renderLowerPanel();
+        return;
+    }
+
+    if (!lowerPanelHasContent)
+    {
+        renderLowerPanel();
+        return;
+    }
+
+    int enabledCount = (int)enabled[0] + (int)enabled[1] + (int)enabled[2];
+    if (enabledCount > 1)
+    {
+        unsigned long displayTime = currentPanel == 1
+            ? localSensorsDisplayTime
+            : (currentPanel == 2 ? tuyaDisplayTime : weatherDisplayTime);
         if (millis() - lastLowerPanelChange >= displayTime)
         {
-            lastLowerPanelChange = millis();
-
-            showingLocalSensors = !showingLocalSensors;
-
-            if (showingLocalSensors)
+            int nextPanel = currentPanel;
+            do
             {
-                updateLocalSensorsDisplay();
-            }
-            else
-            {
-                updateWeatherDisplay();
-            }
-        }
-    }
-    else if (settingWeather)
-    {
-        if (showingLocalSensors)
-        {
-            showingLocalSensors = false;
-            updateWeatherDisplay();
-        }
-    }
-    else if (settingLightSensor)
-    {
-        if (!showingLocalSensors)
-        {
-            showingLocalSensors = true;
-            updateLocalSensorsDisplay();
+                nextPanel = (nextPanel + 1) % 3;
+            } while (!enabled[nextPanel]);
+
+            showingLocalSensors = nextPanel == 1;
+            showingTuyaData = nextPanel == 2;
+            renderLowerPanel();
         }
     }
 }
@@ -1635,6 +831,22 @@ void updateLowerPanel()
 void loop()
 {
     wifiManager.handleClient();
+
+if (wifiGotIpPending)
+{
+    wifiGotIpPending = false;
+    if (ntpStartedAt != 0)
+    {
+        configTzTime(
+            "CET-1CEST,M3.5.0,M10.5.0/3",
+            NTP_SERVER,
+            "time.nist.gov",
+            "time.google.com"
+        );
+        networkServicesRefreshPending = true;
+        Serial.println("WiFi restored; NTP and network services refreshed.");
+    }
+}
 
 if (wifiManager.isConnected())
 {
@@ -1710,7 +922,9 @@ if (touchPressed && !touchWasPressed)
     if (p.z > 300 &&
         millis() - lastMenuTouch > 500)
     {
-        if (screenMode == SCREEN_CLOCK &&
+        const ScreenMode touchedScreen = screenMode;
+
+        if (touchedScreen == SCREEN_CLOCK &&
             p.x >= 3300 && p.x <= 4000 &&
             p.y >= 2700 && p.y <= 3500)
         {
@@ -1718,60 +932,59 @@ if (touchPressed && !touchWasPressed)
             Serial.println("TOUCH: OPEN MENU");
             openMenu();
         }
-        if (screenMode == SCREEN_MENU &&
-    p.x >= 1800 && p.x <= 2250 &&
-    p.y >= 1050 && p.y <= 1500)
-{
-    lastMenuTouch = millis();
+        else if (touchedScreen == SCREEN_MENU &&
+                 p.x >= 1800 && p.x <= 2250 &&
+                 p.y >= 2300 && p.y <= 2800)
+        {
+            lastMenuTouch = millis();
+            setting24Hour = !setting24Hour;
 
-    setting24Hour = !setting24Hour;
+            preferences.begin("ora", false);
+            preferences.putBool("24hour", setting24Hour);
+            preferences.end();
 
-    preferences.begin("ora", false);
-    preferences.putBool("24hour", setting24Hour);
-    preferences.end();
+            Serial.printf(
+                "TIME FORMAT: %s\n",
+                setting24Hour ? "24H" : "12H"
+            );
 
-    Serial.printf(
-        "TIME FORMAT: %s\n",
-        setting24Hour ? "24H" : "12H"
-    );
+            drawMainMenu();
+        }
+        else if (touchedScreen == SCREEN_MENU &&
+                 p.x >= 1800 && p.x <= 2250 &&
+                 p.y >= 1600 && p.y <= 2050)
+        {
+            lastMenuTouch = millis();
+            settingDate = !settingDate;
 
-    drawMainMenu();
-}
-else if (screenMode == SCREEN_MENU &&
-         p.x >= 1800 && p.x <= 2250 &&
-         p.y >= 1600 && p.y <= 2050)
-{
-    lastMenuTouch = millis();
-    settingDate = !settingDate;
+            preferences.begin("ora", false);
+            preferences.putBool("date", settingDate);
+            preferences.end();
 
-    preferences.begin("ora", false);
-    preferences.putBool("date", settingDate);
-    preferences.end();
+            Serial.printf(
+                "DATE: %s\n",
+                settingDate ? "ON" : "OFF"
+            );
 
-    Serial.printf(
-        "DATE: %s\n",
-        settingDate ? "ON" : "OFF"
-    );
-
-    drawMainMenu();
-}
-else if (screenMode == SCREEN_MENU &&
-         p.x >= 1800 && p.x <= 2250 &&
-         p.y >= 2300 && p.y <= 2800)
-{
-    lastMenuTouch = millis();
-    Serial.println("TOUCH: OPEN ABOUT");
-    openAbout();
-}
-        else if (screenMode == SCREEN_ABOUT &&
-         p.z > 500 &&
-         p.x >= 1600 && p.x <= 2550 &&
-         p.y >= 500 && p.y <= 800)
-{
-    lastMenuTouch = millis();
-    Serial.println("TOUCH: BACK TO CLOCK");
-    closeMenu();
-}
+            drawMainMenu();
+        }
+        else if (touchedScreen == SCREEN_MENU &&
+                 p.x >= 1800 && p.x <= 2250 &&
+                 p.y >= 1050 && p.y <= 1500)
+        {
+            lastMenuTouch = millis();
+            Serial.println("TOUCH: OPEN ABOUT");
+            openAbout();
+        }
+        else if (touchedScreen == SCREEN_ABOUT &&
+                 p.z > 500 &&
+                 p.x >= 1600 && p.x <= 2550 &&
+                 p.y >= 500 && p.y <= 800)
+        {
+            lastMenuTouch = millis();
+            Serial.println("TOUCH: BACK TO CLOCK");
+            closeMenu();
+        }
     }
 }
 
@@ -1853,32 +1066,25 @@ if (screenSaverActive && !nightModeActive)
         tft.fillScreen(COLOR_BG);
 
         // Detyro ridizenjimin e shifrave
-        lastDigits[0] = -1;
-        lastDigits[1] = -1;
-        lastDigits[2] = -1;
-        lastDigits[3] = -1;
-
-        // Force date redraw after screen saver
-        lastDay = -1;
+        resetClockDisplay();
 
         if (getSyncedTime(timeinfo))
         {
-            updateClock(timeinfo);
+            updateClockDisplay(tft, timeinfo, setting24Hour);
 
             if (settingDate)
             {
-                updateDate(timeinfo);
+                updateDateDisplay(tft, timeinfo);
             }
 
             bool visible = (timeinfo.tm_sec % 2 == 0);
-            drawColon(visible);
+            drawClockColon(tft, visible);
         }
 
         // Rifresko elementet e ekranit
-        lastWiFiState = false;
-        updateWiFiIndicator();
         updateLowerPanel();
         drawMenuIcon();
+        updateNetworkIndicators(true);
 
         lastMotionTime = now;
 
@@ -1917,27 +1123,22 @@ pirLastState = pirState;
 
             tft.fillScreen(COLOR_BG);
 
-            lastDigits[0] = -1;
-            lastDigits[1] = -1;
-            lastDigits[2] = -1;
-            lastDigits[3] = -1;
-            lastDay = -1;
+            resetClockDisplay();
 
             if (getSyncedTime(timeinfo))
             {
-                updateClock(timeinfo);
+                updateClockDisplay(tft, timeinfo, setting24Hour);
 
                 if (settingDate)
-                    updateDate(timeinfo);
+                    updateDateDisplay(tft, timeinfo);
 
                 bool visible = (timeinfo.tm_sec % 2 == 0);
-                drawColon(visible);
+                drawClockColon(tft, visible);
             }
 
-            lastWiFiState = false;
-            updateWiFiIndicator();
             updateLowerPanel();
             drawMenuIcon();
+            updateNetworkIndicators(true);
         }
          return;
     }
@@ -1993,29 +1194,24 @@ if (nightModeActive)
 
         tft.fillScreen(COLOR_BG);
 
-        lastDigits[0] = -1;
-        lastDigits[1] = -1;
-        lastDigits[2] = -1;
-        lastDigits[3] = -1;
-        lastDay = -1;
+        resetClockDisplay();
 
         if (getSyncedTime(timeinfo))
         {
-            updateClock(timeinfo);
+            updateClockDisplay(tft, timeinfo, setting24Hour);
 
             if (settingDate)
             {
-                updateDate(timeinfo);
+                updateDateDisplay(tft, timeinfo);
             }
 
             bool visible = (timeinfo.tm_sec % 2 == 0);
-            drawColon(visible);
+            drawClockColon(tft, visible);
         }
 
-        lastWiFiState = false;
-        updateWiFiIndicator();
         updateLowerPanel();
         drawMenuIcon();
+        updateNetworkIndicators(true);
 
         lastMotionTime = millis();
     }
@@ -2031,10 +1227,10 @@ else
         // ----------------------------------------------------
         if (getSyncedTime(timeinfo))
         {
-            updateClock(timeinfo);
+            updateClockDisplay(tft, timeinfo, setting24Hour);
             if (settingDate)
         {
-         updateDate(timeinfo);
+         updateDateDisplay(tft, timeinfo);
         }
             static int lastSecond = -1;
             if (timeinfo.tm_sec != lastSecond)
@@ -2042,61 +1238,37 @@ else
                 lastSecond = timeinfo.tm_sec;
                 bool visible =
                     (timeinfo.tm_sec % 2 == 0);
-                drawColon(visible);
+                drawClockColon(tft, visible);
             }
         }
         // ----------------------------------------------------
         // WIFI   INDICATOR
         // ----------------------------------------------------
-        updateWiFiIndicator();
+        updateNetworkIndicators();
         // ----------------------------------------------------
         // WEATHER
         // --------------------------------------------------------
         if (weatherUpdatePending)
         {
             weatherUpdatePending = false;
-            if (!showingLocalSensors && settingWeather)
-                updateWeatherDisplay();
+            if (!showingLocalSensors && !showingTuyaData && settingWeather)
+                drawWeatherDisplay(tft, weather.getData());
+        }
+        if (tuyaUpdatePending)
+        {
+            tuyaUpdatePending = false;
+            if (showingTuyaData && settingTuyaDisplay)
+                updateTuyaDisplay();
         }
         // ----------------------------------------------------
         // LOWER PANEL
         // ----------------------------------------------------
         updateLowerPanel();
        // ----------------------------------------------------
-// RAIN ANIMATION
-// ----------------------------------------------------
-if (!showingLocalSensors &&
-    weather.getData().valid &&
-    millis() - lastRainAnimation >= 180)
-{
-    lastRainAnimation = millis();
-    animateRainDrops();
-}
-if (!showingLocalSensors &&
-    weather.getData().valid &&
-    weather.getData().weatherCode == 0 &&
-    millis() - lastSunAnimation >= 180)
-{
-    lastSunAnimation = millis();
-    animateSun();
-}
-if (!showingLocalSensors &&
-    weather.getData().valid &&
-    weather.getData().weatherCode >= 95 &&
-    weather.getData().weatherCode <= 99 &&
-    millis() - lastLightningAnimation >= 300)
-{
-    lastLightningAnimation = millis();
-    animateLightning();
-}
-if (!showingLocalSensors &&
-    weather.getData().valid &&
-    weather.getData().weatherCode >= 1 &&
-    weather.getData().weatherCode <= 3 &&
-    millis() - lastCloudAnimation >= 500)
-{
-    lastCloudAnimation = millis();
-    animateCloud();
-}
+updateWeatherAnimations(
+    tft,
+    weather.getData(),
+    !showingLocalSensors && !showingTuyaData
+);
     }
 }

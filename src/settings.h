@@ -11,11 +11,13 @@ extern bool setting24Hour;
 extern bool settingDate;
 extern bool settingWeather;
 extern bool settingLightSensor;
+extern bool settingTuyaDisplay;
 extern bool settingPIR;
 
 // Display timing settings
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
+extern unsigned long tuyaDisplayTime;
 
 extern bool settingScreenSaver;
 extern unsigned long screenSaverMinutes;

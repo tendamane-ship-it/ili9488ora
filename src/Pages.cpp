@@ -6,6 +6,7 @@ extern bool settingDate;
 extern bool settingPIR;
 extern bool settingWeather;
 extern bool settingLightSensor;
+extern bool settingTuyaDisplay;
 extern bool settingScreenSaver;
 extern unsigned long screenSaverDelay;
 extern bool settingGreeting;
@@ -15,6 +16,7 @@ extern float nightWakeLux;
 
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
+extern unsigned long tuyaDisplayTime;
 String getDashboardPage()
 {
     String html;
@@ -475,6 +477,11 @@ html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
     html += "<div class='info-row'>";
+    html += "<span class='info-label'>Tuya Display</span>";
+    html += "<span class='info-value' id='tuyaSetting'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
     html += "<span class='info-label'>PIR</span>";
     html += "<span class='info-value' id='pirSetting'>--</span>";
     html += "</div>";
@@ -489,6 +496,11 @@ html += "<a href='/api'>API Status</a>";
     html += "<span class='info-value' id='localTime'>--</span>";
     html += "</div>";
 
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Tuya Display</span>";
+    html += "<span class='info-value' id='tuyaTime'>--</span>";
+    html += "</div>";
+
     html += "</div>";
 
     // ============================================================
@@ -496,7 +508,8 @@ html += "<a href='/api'>API Status</a>";
     // ============================================================
 
     html += "<div class='footer'>";
-    html += "ORA • ILI9488 CLOCK • ESP32-S3";
+    html += "<div>ORA • ILI9488 CLOCK • ESP32-S3</div>";
+    html += "<div style='margin-top:5px'>Mundësuar nga Murat Mane</div>";
     html += "</div>";
 
     html += "</div>";
@@ -593,10 +606,12 @@ html += "<a href='/api'>API Status</a>";
     html += "setText('dateSetting',onOff(d.settingDate));";
     html += "setText('weatherSetting',onOff(d.settingWeather));";
     html += "setText('lightSetting',onOff(d.settingLightSensor));";
+    html += "setText('tuyaSetting',onOff(d.settingTuyaDisplay));";
     html += "setText('pirSetting',onOff(d.settingPIR));";
 
     html += "setText('weatherTime',d.weatherDisplayTime+' sec');";
     html += "setText('localTime',d.localSensorsDisplayTime+' sec');";
+    html += "setText('tuyaTime',d.tuyaDisplayTime+' sec');";
 
     html += "})";
 
@@ -748,6 +763,31 @@ html += "}";
 
     html += ".save:hover{";
     html += "background:#00bddc;";
+    html += "}";
+
+    html += ".restart{";
+    html += "display:block;";
+    html += "width:100%;";
+    html += "margin-top:16px;";
+    html += "padding:14px;";
+    html += "border:1px solid #ff5b62;";
+    html += "border-radius:10px;";
+    html += "background:linear-gradient(180deg,#d93643,#b8202d);";
+    html += "color:#fff;";
+    html += "font-size:16px;";
+    html += "font-weight:700;";
+    html += "cursor:pointer;";
+    html += "box-shadow:0 4px 12px rgba(255,59,72,.22);";
+    html += "}";
+
+    html += ".restart:hover{";
+    html += "background:linear-gradient(180deg,#f04754,#ce2937);";
+    html += "border-color:#ff858b;";
+    html += "}";
+
+    html += ".restart:focus-visible{";
+    html += "outline:3px solid rgba(255,91,98,.45);";
+    html += "outline-offset:3px;";
     html += "}";
 
     html += ".note{";
@@ -913,21 +953,44 @@ html += "</div>";
 
     html += "<h2>Lower Panel</h2>";
 
-    // Weather display time
+    // Weather panel
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Weather display time</div>";
-    html += "<div class='description'>How long weather information stays on screen</div>";
+    html += "<div class='label'>Internet weather</div>";
+    html += "<div class='description'>Show or hide internet weather</div>";
     html += "</div>";
 
     html += "<div class='control'>";
 
-    html += "<input type='number' ";
-    html += "name='weatherTime' ";
-    html += "min='1' ";
-    html += "max='300' ";
-    html += "value='";
+    html += "<select name='weather'>";
+
+    if (settingWeather)
+        html += "<option value='1' selected>ON</option>";
+    else
+        html += "<option value='1'>ON</option>";
+
+    if (!settingWeather)
+        html += "<option value='0' selected>OFF</option>";
+    else
+        html += "<option value='0'>OFF</option>";
+
+    html += "</select>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    html += "<div class='setting'>";
+
+    html += "<div>";
+    html += "<div class='label'>Weather display time</div>";
+    html += "<div class='description'>Seconds to show internet weather</div>";
+    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<input type='number' name='weatherTime' min='1' max='300' value='";
     html += String(weatherDisplayTime / 1000);
     html += "'>";
 
@@ -937,22 +1000,90 @@ html += "</div>";
 
     html += "</div>";
 
-    // Local sensors display time
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Local Sensors display time</div>";
-    html += "<div class='description'>How long BME680 / BH1750 data stays on screen</div>";
+    html += "<div class='label'>Local sensors</div>";
+    html += "<div class='description'>Show or hide BME680 / BH1750 readings</div>";
     html += "</div>";
 
     html += "<div class='control'>";
 
-    html += "<input type='number' ";
-    html += "name='localTime' ";
-    html += "min='1' ";
-    html += "max='300' ";
-    html += "value='";
+    html += "<select name='light'>";
+
+    if (settingLightSensor)
+        html += "<option value='1' selected>ON</option>";
+    else
+        html += "<option value='1'>ON</option>";
+
+    if (!settingLightSensor)
+        html += "<option value='0' selected>OFF</option>";
+    else
+        html += "<option value='0'>OFF</option>";
+
+    html += "</select>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    html += "<div class='setting'>";
+
+    html += "<div>";
+    html += "<div class='label'>Local sensors display time</div>";
+    html += "<div class='description'>Seconds to show BME680 / BH1750 readings</div>";
+    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<input type='number' name='localTime' min='1' max='300' value='";
     html += String(localSensorsDisplayTime / 1000);
+    html += "'>";
+
+    html += "<span class='badge'>sec</span>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    html += "<div class='setting'>";
+
+    html += "<div>";
+    html += "<div class='label'>Tuya display</div>";
+    html += "<div class='description'>Show or hide Tuya temperature, humidity and battery</div>";
+    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<select name='tuyaDisplay'>";
+
+    if (settingTuyaDisplay)
+        html += "<option value='1' selected>ON</option>";
+    else
+        html += "<option value='1'>ON</option>";
+
+    if (!settingTuyaDisplay)
+        html += "<option value='0' selected>OFF</option>";
+    else
+        html += "<option value='0'>OFF</option>";
+
+    html += "</select>";
+
+    html += "</div>";
+
+    html += "</div>";
+
+    html += "<div class='setting'>";
+
+    html += "<div>";
+    html += "<div class='label'>Tuya display time</div>";
+    html += "<div class='description'>Seconds to show Tuya readings</div>";
+    html += "</div>";
+
+    html += "<div class='control'>";
+
+    html += "<input type='number' name='tuyaTime' min='1' max='300' value='";
+    html += String(tuyaDisplayTime / 1000);
     html += "'>";
 
     html += "<span class='badge'>sec</span>";
@@ -979,7 +1110,9 @@ html += "</div>";
     html += "<div class='description'>Internet weather information</div>";
     html += "</div>";
 
-    html += "<div class='badge'>ON</div>";
+    html += "<div class='badge'>";
+    html += settingWeather ? "ON" : "OFF";
+    html += "</div>";
 
     html += "</div>";
 
@@ -991,7 +1124,9 @@ html += "</div>";
     html += "<div class='description'>BH1750 ambient light</div>";
     html += "</div>";
 
-    html += "<div class='badge'>ON</div>";
+    html += "<div class='badge'>";
+    html += settingLightSensor ? "ON" : "OFF";
+    html += "</div>";
 
     html += "</div>";
 
@@ -1113,10 +1248,6 @@ html += "<div class='badge'>RUNNING</div>";
 
 html += "</div>";
 
-html += "<button type='button' class='restart' onclick='restartESP()'>";
-html += "Rinis ESP32";
-html += "</button>";
-
 html += "</div>";
 
 
@@ -1207,12 +1338,18 @@ html += "</div>";
     html += "Save Settings";
     html += "</button>";
 
+    html += "<button type='button' class='restart' onclick='restartESP()'>";
+    html += "Rinis ESP32";
+    html += "</button>";
+
     html += "<div class='note'>";
-    html += "Settings are stored permanently in ESP32 memory. Mundesoi Lapi.";
+    html += "Cilësimet ruhen në memorien e ESP32.";
     html += "</div>";
 html += "</form>";
 
-html += "</div>";
+    html += "<div style='margin:24px 0 8px;text-align:center;color:#71838e;font-size:11px'>Mundësuar nga Murat Mane</div>";
+
+    html += "</div>";
 
 html += "<script>";
 

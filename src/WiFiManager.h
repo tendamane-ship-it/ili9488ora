@@ -36,6 +36,9 @@ private:
 
     bool portalActive;
     bool serverStarted;
+    bool wasConnected;
+    uint8_t reconnectAttempts;
+    unsigned long nextReconnectAt;
 
     void startPortal();
     void stopPortal();

@@ -8,12 +8,14 @@ bool setting24Hour = true;
 bool settingDate = true;
 bool settingWeather = true;
 bool settingLightSensor = true;
+bool settingTuyaDisplay = true;
 bool settingPIR = true;
 bool settingGreeting = true;
 
 // Display timing settings
 unsigned long localSensorsDisplayTime = 10000UL;
 unsigned long weatherDisplayTime = 10000UL;
+unsigned long tuyaDisplayTime = 10000UL;
 
 // Screensaver settings
 bool settingScreenSaver = true;
@@ -31,6 +33,7 @@ void loadSettings()
     settingDate = preferences.getBool("date", true);
     settingWeather = preferences.getBool("weather", true);
     settingLightSensor = preferences.getBool("light", true);
+    settingTuyaDisplay = preferences.getBool("tuyaDisplay", true);
     settingPIR = preferences.getBool("pir", true);
 
     localSensorsDisplayTime =
@@ -38,6 +41,9 @@ void loadSettings()
 
     weatherDisplayTime =
         preferences.getULong("weatherTime", 10000UL);
+
+    tuyaDisplayTime =
+        preferences.getULong("tuyaTime", 10000UL);
 
     settingScreenSaver =
         preferences.getBool("screensaver", true);

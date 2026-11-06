@@ -13,9 +13,11 @@ extern bool setting24Hour;
 extern bool settingDate;
 extern bool settingWeather;
 extern bool settingLightSensor;
+extern bool settingTuyaDisplay;
 extern bool settingPIR;
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
+extern unsigned long tuyaDisplayTime;
 extern float bh1750Lux;
 extern bool bh1750OK;
 extern bool bh1750ReadingOK;
@@ -35,6 +37,18 @@ extern bool bme680OK;
 extern bool bmeReadingOK;
 extern unsigned long lastBmeReading;
 extern TuyaService tuyaService;
+
+static void appendPageFooter(String& html, bool includeWeatherAttribution = false)
+{
+    html += "<footer style='margin:28px 0 8px;text-align:center;color:#71838e;font-size:11px;line-height:1.6'>";
+    if (includeWeatherAttribution)
+    {
+        html += "<div>Të dhënat e motit: <a style='color:inherit' href='https://open-meteo.com/'>Open-Meteo</a> — me ndihmën e Murat Mane.</div>";
+    }
+    html += "<div style='margin-top:5px'>Mundësuar nga Murat Mane</div>";
+    html += "</footer>";
+}
+
 WebServerManager::WebServerManager()
     : server(80),
       weather(nullptr)
@@ -152,9 +166,11 @@ void WebServerManager::handleApiStatus()
     doc["settingDate"] = settingDate;
     doc["settingWeather"] = settingWeather;
     doc["settingLightSensor"] = settingLightSensor;
+    doc["settingTuyaDisplay"] = settingTuyaDisplay;
     doc["settingPIR"] = settingPIR;
     doc["weatherDisplayTime"] = weatherDisplayTime / 1000;
     doc["localSensorsDisplayTime"] = localSensorsDisplayTime / 1000;
+    doc["tuyaDisplayTime"] = tuyaDisplayTime / 1000;
 
     if (bmeReadingOK)
     {
@@ -243,6 +259,7 @@ void WebServerManager::handleLogsPage()
     html += "<div class='heading'><h1>Serial Terminal</h1><button id='scrollButton' type='button'>Poshtë</button></div>";
     html += "<pre id='logs'>Duke pritur logjet...</pre>";
     html += "<div class='note'>Shfaqen mesazhet e fundit të ruajtura nga ora. Rifreskohet çdo 2 sekonda.</div>";
+    appendPageFooter(html);
     html += "</main><script>";
     html += "const panel=document.getElementById('logs');";
     html += "async function updateLogs(){const atBottom=panel.scrollHeight-panel.scrollTop-panel.clientHeight<24;try{const r=await fetch('/api/logs',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);panel.textContent=(await r.text())||'Nuk ka ende mesazhe.';if(atBottom)panel.scrollTop=panel.scrollHeight;}catch(e){panel.textContent='Nuk u lexuan dot logjet: '+e.message;}}";
@@ -290,7 +307,9 @@ html += "<button onclick='loadAPI()'>Refresh</button>";
 
     html += "<pre id='json'>Loading...</pre>";
 
-    html += "<script>";
+        appendPageFooter(html);
+
+        html += "<script>";
     html += "async function loadAPI(){";
     html += "try{";
     html += "const response=await fetch('/api/status');";
@@ -380,6 +399,8 @@ void WebServerManager::handleTuya()
 
     html += "</div>";
 
+    appendPageFooter(html);
+
     html += "</div>";
 
     html += "</body>";
@@ -440,6 +461,7 @@ void WebServerManager::handleWeather()
         html += "<div class='card'>";
         html += "Weather service unavailable.";
         html += "</div>";
+        appendPageFooter(html, true);
         html += "</div></body></html>";
 
         server.send(200, "text/html; charset=UTF-8", html);
@@ -453,6 +475,7 @@ void WebServerManager::handleWeather()
         html += "<div class='card'>";
         html += "Weather data is not available.";
         html += "</div>";
+        appendPageFooter(html, true);
         html += "</div></body></html>";
 
         server.send(200, "text/html; charset=UTF-8", html);
@@ -604,9 +627,7 @@ void WebServerManager::handleWeather()
     // FOOTER
     // --------------------------------------------------------
 
-    html += "<p style='margin-top:25px;color:#777;'>";
-    html += "Data provided by Open-Meteo";
-    html += "</p>";
+    appendPageFooter(html, true);
 
     html += "</div>";
 
@@ -635,6 +656,24 @@ void WebServerManager::handleSettingsSave()
         preferences.putBool("pir", settingPIR);
     }
 
+    if (server.hasArg("tuyaDisplay"))
+    {
+        settingTuyaDisplay = server.arg("tuyaDisplay") == "1";
+        preferences.putBool("tuyaDisplay", settingTuyaDisplay);
+    }
+
+    if (server.hasArg("weather"))
+    {
+        settingWeather = server.arg("weather") == "1";
+        preferences.putBool("weather", settingWeather);
+    }
+
+    if (server.hasArg("light"))
+    {
+        settingLightSensor = server.arg("light") == "1";
+        preferences.putBool("light", settingLightSensor);
+    }
+
     if (server.hasArg("weatherTime"))
     {
         unsigned long seconds = server.arg("weatherTime").toInt();
@@ -661,6 +700,18 @@ void WebServerManager::handleSettingsSave()
 
         localSensorsDisplayTime = seconds * 1000UL;
         preferences.putULong("localTime", localSensorsDisplayTime);
+    }
+
+    if (server.hasArg("tuyaTime"))
+    {
+        unsigned long seconds = server.arg("tuyaTime").toInt();
+        if (seconds < 1)
+            seconds = 1;
+        if (seconds > 300)
+            seconds = 300;
+
+        tuyaDisplayTime = seconds * 1000UL;
+        preferences.putULong("tuyaTime", tuyaDisplayTime);
     }
 if (server.hasArg("screensaver"))
 {

@@ -10,7 +10,10 @@ static const byte DNS_PORT = 53;
 WiFiManager::WiFiManager()
     : portalServer(80),
       portalActive(false),
-      serverStarted(false) {
+      serverStarted(false),
+      wasConnected(false),
+      reconnectAttempts(0),
+      nextReconnectAt(0) {
 }
 
 bool WiFiManager::begin(
@@ -29,8 +32,10 @@ Serial.println(wifiPassword.length());
 
     preferences.end();
     WiFi.mode(WIFI_STA);
+    WiFi.setAutoReconnect(true);
 
     if (connectToWiFi(timeoutMs)) {
+        wasConnected = true;
         Serial.println("WiFi connected successfully.");
         return true;
     }
@@ -266,6 +271,46 @@ void WiFiManager::handleClient() {
         dnsServer.processNextRequest();
         portalServer.handleClient();
     }
+
+    if (WiFi.status() == WL_CONNECTED) {
+        if (!wasConnected && reconnectAttempts > 0) {
+            Serial.println("WiFi automatically reconnected.");
+        }
+        wasConnected = true;
+        reconnectAttempts = 0;
+        nextReconnectAt = 0;
+        return;
+    }
+
+    if (!wasConnected) {
+        return;
+    }
+
+    if (nextReconnectAt == 0) {
+        Serial.println("WiFi connection lost; starting automatic reconnect.");
+        nextReconnectAt = millis() + 1000UL;
+        return;
+    }
+
+    if (static_cast<int32_t>(millis() - nextReconnectAt) < 0) {
+        return;
+    }
+
+    WiFi.reconnect();
+    if (reconnectAttempts < 6) {
+        ++reconnectAttempts;
+    }
+
+    uint32_t delayMs = 1000UL << (reconnectAttempts - 1);
+    if (delayMs > 30000UL) {
+        delayMs = 30000UL;
+    }
+    nextReconnectAt = millis() + delayMs;
+    Serial.printf(
+        "WiFi reconnect attempt %u; next retry in %lu ms.\n",
+        reconnectAttempts,
+        static_cast<unsigned long>(delayMs)
+    );
 }
 
 bool WiFiManager::isConnected() const {
