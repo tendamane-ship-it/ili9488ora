@@ -16,29 +16,35 @@ enum HeartDrawStage
 };
 
 static HeartDrawStage heartDrawStage = HEART_STABLE;
-static float heartBaseScale = 5.8;
-static float heartRedScale = 5.8;
+static float heartBaseScale = 4.0;
+static float heartRedScale = 4.0;
 static int heartDirection = 0;
 static float heartTraceProgress = 0.0;
 static constexpr float HEART_FULL_TURN = 6.2831853f;
-static constexpr float HEART_SCALE_STEP = 0.42;
-static constexpr float HEART_TRACE_STEP = 3.2;
+static constexpr float HEART_REST_SCALE = 4.0f;
+static constexpr float HEART_FIRST_PEAK_SCALE = 8.8f;
+static constexpr float HEART_SECOND_PEAK_SCALE = 6.8f;
+static constexpr float HEART_SCALE_STEP = 0.8f;
+static constexpr float HEART_TRACE_STEP = 4.8f;
 
-static void drawHeartOutline(
+static void drawHeartArc(
     float scale,
     uint16_t color,
-    float progress
+    float startAngle,
+    float endAngle
 )
 {
     const int cx = 150;
-    const int cy = 150;
-    const float endAngle = HEART_FULL_TURN * progress;
+    const int cy = 135;
+    const float angleStep = startAngle <= endAngle ? 0.015f : -0.015f;
 
     bool firstPoint = true;
     int oldX = 0;
     int oldY = 0;
 
-    for (float t = 0; t <= endAngle; t += 0.015)
+    for (float t = startAngle;
+         angleStep > 0 ? t <= endAngle : t >= endAngle;
+         t += angleStep)
     {
         float x =
             16.0 *
@@ -70,6 +76,22 @@ static void drawHeartOutline(
         oldY = py;
         firstPoint = false;
     }
+}
+
+static void drawHeartOutline(
+    float scale,
+    uint16_t color,
+    float progress
+)
+{
+    const float endAngle = HEART_FULL_TURN * progress;
+    drawHeartArc(scale, color, 0.0f, endAngle);
+    drawHeartArc(
+        scale,
+        color,
+        HEART_FULL_TURN,
+        HEART_FULL_TURN - endAngle
+    );
 }
 
 
@@ -107,7 +129,7 @@ void updateScreenSaver(bool active)
 
         heartSprite->setColorDepth(8);
 
-        if (heartSprite->createSprite(300, 300))
+        if (heartSprite->createSprite(300, 320))
         {
             heartSpriteReady = true;
 
@@ -118,7 +140,7 @@ void updateScreenSaver(bool active)
             heartPhase = 0.0;
             lastHeartFrame = millis();
             heartDrawStage = HEART_STABLE;
-            heartBaseScale = 5.8;
+            heartBaseScale = HEART_REST_SCALE;
             heartRedScale = heartBaseScale;
         }
         else
@@ -151,7 +173,7 @@ void updateScreenSaver(bool active)
     // HEARTBEAT
     // --------------------------------------------------------
 
-    heartPhase += 0.45;
+    heartPhase += 0.60;
 
     float cycle =
         fmod(
@@ -159,10 +181,8 @@ void updateScreenSaver(bool active)
             TWO_PI
         );
 
-    float pulse = 1.0;
+    float targetScale = HEART_REST_SCALE;
 
-
-    // RRAHJA E PARE
     if (cycle < 3.20)
     {
         float p =
@@ -170,12 +190,11 @@ void updateScreenSaver(bool active)
                 (cycle / 3.20) * PI
             );
 
-        pulse =
-            1.0 + 0.42 * p;
+        targetScale =
+            HEART_REST_SCALE
+            + (HEART_FIRST_PEAK_SCALE - HEART_REST_SCALE) * p;
     }
 
-
-    // RRAHJA E DYTE
     else if (
         cycle >= 3.80 &&
         cycle < 5.20
@@ -186,12 +205,12 @@ void updateScreenSaver(bool active)
                 ((cycle - 3.80) / 1.40) * PI
             );
 
-        pulse =
-            1.0 + 0.24 * p;
+        targetScale =
+            HEART_REST_SCALE
+            + (HEART_SECOND_PEAK_SCALE - HEART_REST_SCALE) * p;
     }
 
 
-    float targetScale = 5.8 * pulse;
     if (heartDrawStage == HEART_STABLE)
     {
         float scaleDifference = targetScale - heartBaseScale;
@@ -259,7 +278,7 @@ void updateScreenSaver(bool active)
     heartSprite->drawString(
         "Mane",
         150,
-        236
+        305
     );
 
     heartSprite->setTextDatum(
@@ -273,6 +292,6 @@ void updateScreenSaver(bool active)
 
     heartSprite->pushSprite(
         90,
-        10
+        0
     );
 }
