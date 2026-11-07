@@ -9,23 +9,9 @@ static bool heartSpriteReady = false;
 static unsigned long lastHeartFrame = 0;
 static float heartPhase = 0.0;
 
-enum HeartDrawStage
-{
-    HEART_STABLE,
-    HEART_DRAWING_RED
-};
-
-static HeartDrawStage heartDrawStage = HEART_STABLE;
-static float heartBaseScale = 4.0;
-static float heartRedScale = 4.0;
-static int heartDirection = 0;
-static float heartTraceProgress = 0.0;
 static constexpr float HEART_FULL_TURN = 6.2831853f;
-static constexpr float HEART_REST_SCALE = 4.0f;
-static constexpr float HEART_FIRST_PEAK_SCALE = 8.8f;
-static constexpr float HEART_SECOND_PEAK_SCALE = 6.8f;
-static constexpr float HEART_SCALE_STEP = 0.8f;
-static constexpr float HEART_TRACE_STEP = 4.8f;
+static constexpr float HEART_MIN_SCALE = 4.0f;
+static constexpr float HEART_MAX_SCALE = 9.0f;
 
 static void drawHeartArc(
     float scale,
@@ -35,7 +21,7 @@ static void drawHeartArc(
 )
 {
     const int cx = 150;
-    const int cy = 135;
+    const int cy = 160;
     const float angleStep = startAngle <= endAngle ? 0.015f : -0.015f;
 
     bool firstPoint = true;
@@ -80,17 +66,16 @@ static void drawHeartArc(
 
 static void drawHeartOutline(
     float scale,
-    uint16_t color,
-    float progress
+    uint16_t color
 )
 {
-    const float endAngle = HEART_FULL_TURN * progress;
-    drawHeartArc(scale, color, 0.0f, endAngle);
+    const float halfTurn = HEART_FULL_TURN / 2.0f;
+    drawHeartArc(scale, color, 0.0f, halfTurn);
     drawHeartArc(
         scale,
         color,
         HEART_FULL_TURN,
-        HEART_FULL_TURN - endAngle
+        halfTurn
     );
 }
 
@@ -139,9 +124,6 @@ void updateScreenSaver(bool active)
 
             heartPhase = 0.0;
             lastHeartFrame = millis();
-            heartDrawStage = HEART_STABLE;
-            heartBaseScale = HEART_REST_SCALE;
-            heartRedScale = heartBaseScale;
         }
         else
         {
@@ -175,87 +157,14 @@ void updateScreenSaver(bool active)
 
     heartPhase += 0.60;
 
-    float cycle =
-        fmod(
-            heartPhase,
-            TWO_PI
-        );
-
-    float targetScale = HEART_REST_SCALE;
-
-    if (cycle < 3.20)
-    {
-        float p =
-            sin(
-                (cycle / 3.20) * PI
-            );
-
-        targetScale =
-            HEART_REST_SCALE
-            + (HEART_FIRST_PEAK_SCALE - HEART_REST_SCALE) * p;
-    }
-
-    else if (
-        cycle >= 3.80 &&
-        cycle < 5.20
-    )
-    {
-        float p =
-            sin(
-                ((cycle - 3.80) / 1.40) * PI
-            );
-
-        targetScale =
-            HEART_REST_SCALE
-            + (HEART_SECOND_PEAK_SCALE - HEART_REST_SCALE) * p;
-    }
-
-
-    if (heartDrawStage == HEART_STABLE)
-    {
-        float scaleDifference = targetScale - heartBaseScale;
-        if (fabs(scaleDifference) > 0.05)
-        {
-            heartDirection = scaleDifference > 0 ? 1 : -1;
-            float distance = fabs(scaleDifference);
-            float redStep = min(HEART_SCALE_STEP, distance);
-            heartRedScale =
-                heartBaseScale + heartDirection * redStep;
-            heartTraceProgress = 0.0;
-            heartDrawStage = HEART_DRAWING_RED;
-        }
-    }
-
-    if (heartDrawStage != HEART_STABLE)
-    {
-        heartTraceProgress = min(
-            heartTraceProgress + HEART_TRACE_STEP,
-            HEART_FULL_TURN
-        );
-
-        if (heartTraceProgress >= HEART_FULL_TURN)
-        {
-            heartTraceProgress = 0.0;
-            heartBaseScale = heartRedScale;
-            heartDrawStage = HEART_STABLE;
-        }
-    }
+    float scaleProgress =
+        (1.0f - cos(heartPhase)) / 2.0f;
+    float heartScale =
+        HEART_MIN_SCALE
+        + (HEART_MAX_SCALE - HEART_MIN_SCALE) * scaleProgress;
 
     heartSprite->fillSprite(TFT_BLACK);
-
-    if (heartDrawStage == HEART_DRAWING_RED)
-    {
-        drawHeartOutline(heartBaseScale, TFT_RED, 1.0);
-        drawHeartOutline(
-            heartRedScale,
-            TFT_RED,
-            heartTraceProgress / HEART_FULL_TURN
-        );
-    }
-    else
-    {
-        drawHeartOutline(heartBaseScale, TFT_RED, 1.0);
-    }
+    drawHeartOutline(heartScale, TFT_RED);
 
 
     // --------------------------------------------------------
@@ -278,7 +187,7 @@ void updateScreenSaver(bool active)
     heartSprite->drawString(
         "Mane",
         150,
-        305
+        160
     );
 
     heartSprite->setTextDatum(
