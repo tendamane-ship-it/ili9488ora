@@ -5,6 +5,7 @@
 #include "WeatherService.h"
 
 void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data);
+void drawWeatherIconGallery(TFT_eSPI& display);
 void updateWeatherAnimations(
     TFT_eSPI& display,
     const WeatherData& data,

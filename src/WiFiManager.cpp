@@ -1,9 +1,9 @@
 
 #include "WiFiManager.h"
 #include "SerialLog.h"
+#include <esp_system.h>
 
 static const char* AP_SSID = "oraPas88888888";
-static const char* AP_PASSWORD = "88888888";
 
 static const byte DNS_PORT = 53;
 
@@ -95,10 +95,20 @@ void WiFiManager::startPortal() {
     IPAddress gateway(192, 168, 4, 1);
     IPAddress subnet(255, 255, 255, 0);
 
-    bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+    char apPassword[9];
+    snprintf(
+        apPassword,
+        sizeof(apPassword),
+        "%08lX",
+        static_cast<unsigned long>(esp_random())
+    );
+
+    bool apStarted = WiFi.softAP(AP_SSID, apPassword);
 
 Serial.print("AP start result: ");
 Serial.println(apStarted ? "SUCCESS" : "FAILED");
+Serial.print("AP password: ");
+Serial.println(apPassword);
 
 delay(500);
 

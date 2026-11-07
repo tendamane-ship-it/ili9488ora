@@ -84,7 +84,8 @@ enum ScreenMode
 {
     SCREEN_CLOCK,
     SCREEN_MENU,
-    SCREEN_ABOUT
+    SCREEN_ABOUT,
+    SCREEN_ICON_PREVIEW
 };
 
 ScreenMode screenMode = SCREEN_CLOCK;
@@ -113,17 +114,17 @@ void drawMainDividers()
     tft.drawFastHLine(0, 242, 480, TFT_DARKGREY);
 }
 
-void drawWiFiIcon(uint16_t color)
+void drawWiFiIcon(uint16_t color, int verticalOffset = 0)
 {
-    tft.drawLine(2, 63, 5, 60, color);
-    tft.drawLine(5, 60, 9, 59, color);
-    tft.drawLine(9, 59, 13, 60, color);
-    tft.drawLine(13, 60, 16, 63, color);
-    tft.drawLine(5, 64, 7, 62, color);
-    tft.drawLine(7, 62, 9, 61, color);
-    tft.drawLine(9, 61, 11, 62, color);
-    tft.drawLine(11, 62, 13, 64, color);
-    tft.fillCircle(9, 67, 2, color);
+    tft.drawLine(2, 63 + verticalOffset, 5, 60 + verticalOffset, color);
+    tft.drawLine(5, 60 + verticalOffset, 9, 59 + verticalOffset, color);
+    tft.drawLine(9, 59 + verticalOffset, 13, 60 + verticalOffset, color);
+    tft.drawLine(13, 60 + verticalOffset, 16, 63 + verticalOffset, color);
+    tft.drawLine(5, 64 + verticalOffset, 7, 62 + verticalOffset, color);
+    tft.drawLine(7, 62 + verticalOffset, 9, 61 + verticalOffset, color);
+    tft.drawLine(9, 61 + verticalOffset, 11, 62 + verticalOffset, color);
+    tft.drawLine(11, 62 + verticalOffset, 13, 64 + verticalOffset, color);
+    tft.fillCircle(9, 67 + verticalOffset, 2, color);
 }
 
 void updateNetworkIndicators(bool force = false)
@@ -177,39 +178,48 @@ void updateNetworkIndicators(bool force = false)
         ? TFT_GREEN
         : (tuyaIndicatorState == 1 ? TFT_YELLOW : TFT_RED);
 
-    tft.fillRect(0, 50, 70, 132, COLOR_BG);
-    drawWiFiIcon(wifiColor);
-    tft.drawCircle(9, 79, 5, ntpColor);
-    tft.drawLine(9, 79, 9, 76, ntpColor);
-    tft.drawLine(9, 79, 12, 81, ntpColor);
-    tft.fillCircle(9, 97, 4, bmeColor);
-    tft.fillCircle(9, 115, 4, bh1750Color);
-    tft.fillCircle(9, 133, 4, pirColor);
-    tft.fillCircle(9, 151, 4, weatherColor);
-    tft.fillCircle(9, 169, 4, tuyaColor);
+    constexpr int indicatorOffset = 28;
+    tft.fillRect(0, 78, 70, 142, COLOR_BG);
+    drawWiFiIcon(wifiColor, indicatorOffset);
+    tft.drawCircle(9, 79 + indicatorOffset, 5, ntpColor);
+    tft.drawLine(
+        9, 79 + indicatorOffset,
+        9, 76 + indicatorOffset,
+        ntpColor
+    );
+    tft.drawLine(
+        9, 79 + indicatorOffset,
+        12, 81 + indicatorOffset,
+        ntpColor
+    );
+    tft.fillCircle(9, 97 + indicatorOffset, 4, bmeColor);
+    tft.fillCircle(9, 115 + indicatorOffset, 4, bh1750Color);
+    tft.fillCircle(9, 133 + indicatorOffset, 4, pirColor);
+    tft.fillCircle(9, 151 + indicatorOffset, 4, weatherColor);
+    tft.fillCircle(9, 169 + indicatorOffset, 4, tuyaColor);
 
     tft.setTextFont(1);
     tft.setTextSize(1);
     tft.setTextColor(wifiColor, COLOR_BG);
-    tft.setCursor(19, 57);
+    tft.setCursor(19, 57 + indicatorOffset);
     tft.print("WiFi");
     tft.setTextColor(ntpColor, COLOR_BG);
-    tft.setCursor(19, 75);
+    tft.setCursor(19, 75 + indicatorOffset);
     tft.print("NTP");
     tft.setTextColor(bmeColor, COLOR_BG);
-    tft.setCursor(19, 93);
+    tft.setCursor(19, 93 + indicatorOffset);
     tft.print("BME680");
     tft.setTextColor(bh1750Color, COLOR_BG);
-    tft.setCursor(19, 111);
+    tft.setCursor(19, 111 + indicatorOffset);
     tft.print("BH1750");
     tft.setTextColor(pirColor, COLOR_BG);
-    tft.setCursor(19, 129);
+    tft.setCursor(19, 129 + indicatorOffset);
     tft.print("PIR");
     tft.setTextColor(weatherColor, COLOR_BG);
-    tft.setCursor(19, 147);
+    tft.setCursor(19, 147 + indicatorOffset);
     tft.print("MOTI");
     tft.setTextColor(tuyaColor, COLOR_BG);
-    tft.setCursor(19, 165);
+    tft.setCursor(19, 165 + indicatorOffset);
     tft.print("TUYA");
 
     drawMainDividers();
@@ -245,6 +255,12 @@ void drawMenuIcon()
     tft.drawLine(5, 28, 35, 28, TFT_WHITE);
     tft.drawLine(5, 36, 35, 36, TFT_WHITE);
     tft.drawLine(5, 44, 35, 44, TFT_WHITE);
+
+    tft.setTextFont(1);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_WHITE, COLOR_BG);
+    tft.setCursor(5, 50);
+    tft.print("Menu");
 }
 void drawMainMenu()
 {
@@ -300,6 +316,10 @@ void drawMainMenu()
     tft.setTextColor(TFT_WHITE, COLOR_BG);
     tft.drawString("ABOUT", 240, 227);
 
+    tft.drawRect(80, 260, 320, 45, TFT_WHITE);
+    tft.setTextColor(TFT_YELLOW, COLOR_BG);
+    tft.drawString("WEATHER ICONS", 240, 282);
+
     tft.setTextDatum(TL_DATUM);
 }
 void drawAbout()
@@ -346,6 +366,13 @@ void openAbout()
     aboutStartTime = millis();
     drawAbout();
 }
+
+void openWeatherIconPreview()
+{
+    screenMode = SCREEN_ICON_PREVIEW;
+    drawWeatherIconGallery(tft);
+}
+
 void updateLowerPanel();
 void closeMenu()
 {
@@ -976,6 +1003,20 @@ if (touchPressed && !touchWasPressed)
             Serial.println("TOUCH: OPEN ABOUT");
             openAbout();
         }
+        else if (touchedScreen == SCREEN_MENU &&
+                 p.x >= 1800 && p.x <= 2250 &&
+                 p.y >= 500 && p.y <= 950)
+        {
+            lastMenuTouch = millis();
+            Serial.println("TOUCH: WEATHER ICON PREVIEW");
+            openWeatherIconPreview();
+        }
+        else if (touchedScreen == SCREEN_ICON_PREVIEW)
+        {
+            lastMenuTouch = millis();
+            Serial.println("TOUCH: CLOSE WEATHER ICON PREVIEW");
+            closeMenu();
+        }
         else if (touchedScreen == SCREEN_ABOUT &&
                  p.z > 500 &&
                  p.x >= 1600 && p.x <= 2550 &&
@@ -992,6 +1033,8 @@ touchWasPressed = touchPressed;
 // --------------------------------------------------------
 // FUNDI TOUCH
 // --------------------------------------------------------
+if (screenMode == SCREEN_ICON_PREVIEW)
+    return;
 
 // --------------------------------------------------------
 // PIR / MOTION
@@ -1268,7 +1311,8 @@ else
 updateWeatherAnimations(
     tft,
     weather.getData(),
-    !showingLocalSensors && !showingTuyaData
+    screenMode == SCREEN_CLOCK &&
+        !showingLocalSensors && !showingTuyaData
 );
     }
 }
