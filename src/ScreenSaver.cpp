@@ -12,19 +12,17 @@ static float heartPhase = 0.0;
 enum HeartDrawStage
 {
     HEART_STABLE,
-    HEART_DRAWING_RED,
-    HEART_DRAWING_CYAN
+    HEART_DRAWING_RED
 };
 
 static HeartDrawStage heartDrawStage = HEART_STABLE;
 static float heartBaseScale = 5.8;
 static float heartRedScale = 5.8;
-static float heartCyanScale = 5.8;
 static int heartDirection = 0;
 static float heartTraceProgress = 0.0;
 static constexpr float HEART_FULL_TURN = 6.2831853f;
-static constexpr float HEART_SCALE_STEP = 0.22;
-static constexpr float HEART_TRACE_STEP = 1.3;
+static constexpr float HEART_SCALE_STEP = 0.42;
+static constexpr float HEART_TRACE_STEP = 3.2;
 
 static void drawHeartOutline(
     float scale,
@@ -33,7 +31,7 @@ static void drawHeartOutline(
 )
 {
     const int cx = 150;
-    const int cy = 92;
+    const int cy = 150;
     const float endAngle = HEART_FULL_TURN * progress;
 
     bool firstPoint = true;
@@ -109,7 +107,7 @@ void updateScreenSaver(bool active)
 
         heartSprite->setColorDepth(8);
 
-        if (heartSprite->createSprite(300, 200))
+        if (heartSprite->createSprite(300, 300))
         {
             heartSpriteReady = true;
 
@@ -121,6 +119,7 @@ void updateScreenSaver(bool active)
             lastHeartFrame = millis();
             heartDrawStage = HEART_STABLE;
             heartBaseScale = 5.8;
+            heartRedScale = heartBaseScale;
         }
         else
         {
@@ -152,7 +151,7 @@ void updateScreenSaver(bool active)
     // HEARTBEAT
     // --------------------------------------------------------
 
-    heartPhase += 0.60;
+    heartPhase += 0.45;
 
     float cycle =
         fmod(
@@ -164,31 +163,31 @@ void updateScreenSaver(bool active)
 
 
     // RRAHJA E PARE
-    if (cycle < 0.80)
+    if (cycle < 3.20)
     {
         float p =
             sin(
-                (cycle / 0.80) * PI
+                (cycle / 3.20) * PI
             );
 
         pulse =
-            1.0 + 0.24 * p;
+            1.0 + 0.42 * p;
     }
 
 
     // RRAHJA E DYTE
     else if (
-        cycle >= 1.80 &&
-        cycle < 2.50
+        cycle >= 3.80 &&
+        cycle < 5.20
     )
     {
         float p =
             sin(
-                ((cycle - 1.80) / 0.70) * PI
+                ((cycle - 3.80) / 1.40) * PI
             );
 
         pulse =
-            1.0 + 0.14 * p;
+            1.0 + 0.24 * p;
     }
 
 
@@ -201,15 +200,8 @@ void updateScreenSaver(bool active)
             heartDirection = scaleDifference > 0 ? 1 : -1;
             float distance = fabs(scaleDifference);
             float redStep = min(HEART_SCALE_STEP, distance);
-            float cyanStep = min(
-                HEART_SCALE_STEP,
-                max(0.0f, distance - redStep)
-            );
-
             heartRedScale =
                 heartBaseScale + heartDirection * redStep;
-            heartCyanScale =
-                heartRedScale + heartDirection * cyanStep;
             heartTraceProgress = 0.0;
             heartDrawStage = HEART_DRAWING_RED;
         }
@@ -225,12 +217,8 @@ void updateScreenSaver(bool active)
         if (heartTraceProgress >= HEART_FULL_TURN)
         {
             heartTraceProgress = 0.0;
-            heartDrawStage = heartDrawStage == HEART_DRAWING_RED
-                ? HEART_DRAWING_CYAN
-                : HEART_STABLE;
-
-            if (heartDrawStage == HEART_STABLE)
-                heartBaseScale = heartCyanScale;
+            heartBaseScale = heartRedScale;
+            heartDrawStage = HEART_STABLE;
         }
     }
 
@@ -238,25 +226,16 @@ void updateScreenSaver(bool active)
 
     if (heartDrawStage == HEART_DRAWING_RED)
     {
-        drawHeartOutline(heartBaseScale, TFT_CYAN, 1.0);
+        drawHeartOutline(heartBaseScale, TFT_RED, 1.0);
         drawHeartOutline(
             heartRedScale,
             TFT_RED,
             heartTraceProgress / HEART_FULL_TURN
         );
     }
-    else if (heartDrawStage == HEART_DRAWING_CYAN)
-    {
-        drawHeartOutline(heartRedScale, TFT_RED, 1.0);
-        drawHeartOutline(
-            heartCyanScale,
-            TFT_CYAN,
-            heartTraceProgress / HEART_FULL_TURN
-        );
-    }
     else
     {
-        drawHeartOutline(heartBaseScale, TFT_CYAN, 1.0);
+        drawHeartOutline(heartBaseScale, TFT_RED, 1.0);
     }
 
 
@@ -280,7 +259,7 @@ void updateScreenSaver(bool active)
     heartSprite->drawString(
         "Mane",
         150,
-        178
+        236
     );
 
     heartSprite->setTextDatum(
@@ -294,6 +273,6 @@ void updateScreenSaver(bool active)
 
     heartSprite->pushSprite(
         90,
-        60
+        10
     );
 }
