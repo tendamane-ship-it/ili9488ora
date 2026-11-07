@@ -1197,6 +1197,7 @@ return;
 // NIGHT MODE
 if (settingNightMode &&
     bh1750OK &&
+    bh1750ReadingOK &&
     !nightModeActive &&
     bh1750Lux < nightSleepLux)
 {
@@ -1227,7 +1228,7 @@ if (settingNightMode &&
 if (nightModeActive)
 {
     if (!settingNightMode ||
-        (bh1750OK && bh1750Lux >= nightWakeLux))
+        (bh1750OK && bh1750ReadingOK && bh1750Lux >= nightWakeLux))
     {
         nightModeActive = false;
 
