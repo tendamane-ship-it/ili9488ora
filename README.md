@@ -7,13 +7,15 @@ faqe lokale në rrjet për statusin dhe konfigurimet.
 ## Veçoritë
 
 - Ora dhe data sinkronizohen me NTP.
+- Data shfaq ditën e javës dhe datën në shqip, në dy rreshta për lexim më të
+  qartë; teksti në ekran përdor fontin e integruar të pajisjes.
 - Moti aktual dhe parashikimi 7-ditor merren nga Open-Meteo për Sarandën.
 - Ikonat e motit përfshijnë diellin/hënën, retë, shiun, borën, mjegullën dhe
   vetëtimat; retë, pikat, flokët e borës dhe vetëtimat animohen sipas motit.
 - Galeria **WEATHER ICONS** në menynë e ekranit lejon shikimin e ikonave pa
   pritur kushtet përkatëse të motit.
 - Sensori BME680 mat temperaturën, lagështinë, presionin dhe rezistencën e
-  gazit; BH1750 mat ndriçimin.
+  gazit; Bosch BSEC2 llogarit indeksin IAQ dhe BH1750 mat ndriçimin.
 - Lidhja me Tuya Cloud shfaq të dhënat e pajisjes së konfiguruar.
 - PIR, kursyesi i ekranit, modaliteti i natës dhe paneli lokal web mund të
   përdoren sipas konfigurimit të projektit.
@@ -71,3 +73,10 @@ ruaj emrin dhe fjalëkalimin e routerit dhe ESP32 do t'i ruajë lokalisht.
 Rezistenca e gazit e BME680 është një tregues relativ i përbërjeve organike
 të paqëndrueshme (VOC); nuk është matje e drejtpërdrejtë e CO₂ dhe nuk duhet
 përdorur si pajisje sigurie.
+
+BSEC2 raporton IAQ në shkallën 0–500 bashkë me saktësinë 0–3. Vlerat me
+saktësi 0 shënohen si në kalibrim; sensorit mund t'i duhen deri në 24 orë
+kondicionim dhe algoritmi përshtatet me historikun e mjedisit. Gjendja e
+algoritmit ruhet lokalisht në NVS çdo 6 orë. Biblioteka e wrapper-it Bosch
+është BSD-3-Clause, ndërsa binarët BSEC mbulohen nga licenca e veçantë e
+Bosch-it; pranoni kushtet e saj para rishpërndarjes së firmware-it.

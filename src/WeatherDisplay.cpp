@@ -1,4 +1,5 @@
 #include "WeatherDisplay.h"
+#include "DisplayText.h"
 
 namespace
 {
@@ -533,16 +534,16 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
         COLOR_BG
     );
 
-    display.setTextFont(2);
-    display.setTextDatum(MC_DATUM);
-
-    display.drawString(
-        "Moti ne Sarande",
-        277,
-        WEATHER_Y + 7
+    constexpr uint8_t titleTextSize = 2;
+    const char* title = "Moti në Sarandë";
+    display.setTextFont(1);
+    display.setTextSize(titleTextSize);
+    display.setCursor(
+        277 - albanianTextWidth(title, titleTextSize) / 2,
+        WEATHER_Y
     );
-
-    display.setTextDatum(TL_DATUM);
+    drawAlbanianText(display, title, titleTextSize);
+    display.setTextSize(1);
 
     // Weather icon
     drawWeatherIcon(display, data, 40, WEATHER_Y + 37);

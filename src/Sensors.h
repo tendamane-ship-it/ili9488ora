@@ -3,14 +3,13 @@
 
 #include <Arduino.h>
 #include <Wire.h>
-#include <Adafruit_BME680.h>
+#include <bsec2.h>
 #include <BH1750.h>
 
 // ------------------------------------------------------------
 // SENSOR OBJECTS
 // ------------------------------------------------------------
 
-extern Adafruit_BME680 bme;
 extern bool bme680OK;
 extern bool bmeReadingOK;
 extern unsigned long lastBmeReading;
@@ -34,13 +33,14 @@ extern float bh1750Lux;
 // AIR QUALITY
 // ------------------------------------------------------------
 
-extern float airBaseline;
-extern bool airBaselineReady;
+extern float bmeIaq;
+extern bool bmeIaqReady;
+extern uint8_t bmeIaqAccuracy;
+extern int8_t bmeIaqStabilizationStatus;
+extern int8_t bmeIaqRunInStatus;
 
-extern float airBaselineSum;
-extern int airBaselineCount;
-
-extern const int AIR_BASELINE_SAMPLES;
+const char* airQualityCategory();
+const char* bmeIaqAccuracyLabel();
 
 // ------------------------------------------------------------
 // SENSOR TIMING
@@ -55,7 +55,7 @@ extern const unsigned long SENSOR_READ_INTERVAL;
 
 void initSensors();
 void updateLocalSensors();
-void updateAirQuality();
+void runBsec();
 // ------------------------------------------------------------
 // PIR
 // ------------------------------------------------------------

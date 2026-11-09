@@ -32,7 +32,15 @@ extern float nightWakeLux;
 
 extern float bmeTemp;
 extern float bmeHumidity;
+extern float bmePressure;
 extern float bmeGas;
+extern float bmeIaq;
+extern bool bmeIaqReady;
+extern uint8_t bmeIaqAccuracy;
+extern int8_t bmeIaqStabilizationStatus;
+extern int8_t bmeIaqRunInStatus;
+extern const char* airQualityCategory();
+extern const char* bmeIaqAccuracyLabel();
 extern bool bme680OK;
 extern bool bmeReadingOK;
 extern unsigned long lastBmeReading;
@@ -82,7 +90,7 @@ void WebServerManager::begin()
 
     server.on("/restart", HTTP_POST, [this]()
     {
-        server.send(200, "text/plain", "ESP32 restarting...");
+        server.send(200, "text/plain; charset=UTF-8", "ESP32 po riniset...");
         delay(300);
         ESP.restart();
     });
@@ -139,10 +147,26 @@ void WebServerManager::handleApiStatus()
     struct tm timeinfo;
     if (getLocalTime(&timeinfo, 100))
     {
+        static const char* const days[] = {
+            "E diel", "E hënë", "E martë", "E mërkurë",
+            "E enjte", "E premte", "E shtunë"
+        };
+        static const char* const months[] = {
+            "janar", "shkurt", "mars", "prill", "maj", "qershor",
+            "korrik", "gusht", "shtator", "tetor", "nëntor", "dhjetor"
+        };
         char timeText[12];
-        char dateText[32];
+        char dateText[48];
         strftime(timeText, sizeof(timeText), "%H:%M:%S", &timeinfo);
-        strftime(dateText, sizeof(dateText), "%A, %d %B %Y", &timeinfo);
+        snprintf(
+            dateText,
+            sizeof(dateText),
+            "%s, %02d %s %d",
+            days[timeinfo.tm_wday],
+            timeinfo.tm_mday,
+            months[timeinfo.tm_mon],
+            timeinfo.tm_year + 1900
+        );
         doc["time"] = timeText;
         doc["date"] = dateText;
     }
@@ -176,14 +200,38 @@ void WebServerManager::handleApiStatus()
     {
         doc["bmeTemperature"] = bmeTemp;
         doc["bmeHumidity"] = bmeHumidity;
+        doc["bmePressure"] = bmePressure;
         doc["bmeGas"] = bmeGas;
     }
     else
     {
         doc["bmeTemperature"] = nullptr;
         doc["bmeHumidity"] = nullptr;
+        doc["bmePressure"] = nullptr;
         doc["bmeGas"] = nullptr;
     }
+    if (bmeIaqReady)
+    {
+        doc["bmeIaq"] = bmeIaq;
+        doc["bmeIaqAccuracy"] = bmeIaqAccuracy;
+        doc["bmeIaqAccuracyLabel"] = bmeIaqAccuracyLabel();
+        doc["airQualityCategory"] = airQualityCategory();
+    }
+    else
+    {
+        doc["bmeIaq"] = nullptr;
+        doc["bmeIaqAccuracy"] = nullptr;
+        doc["bmeIaqAccuracyLabel"] = "E pasigurt";
+        doc["airQualityCategory"] = "Po kalibrohet";
+    }
+    if (bmeIaqStabilizationStatus >= 0)
+        doc["bmeIaqStabilization"] = bmeIaqStabilizationStatus;
+    else
+        doc["bmeIaqStabilization"] = nullptr;
+    if (bmeIaqRunInStatus >= 0)
+        doc["bmeIaqRunIn"] = bmeIaqRunInStatus;
+    else
+        doc["bmeIaqRunIn"] = nullptr;
     doc["bme680OK"] = bme680OK;
     doc["bme680ReadingOK"] = bmeReadingOK;
     if (lastBmeReading != 0)
@@ -240,7 +288,7 @@ void WebServerManager::handleLogsPage()
     html += "<meta charset='UTF-8'>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
     html += "<meta name='theme-color' content='#080b10'>";
-    html += "<title>ORA - Serial Logs</title>";
+    html += "<title>ORA - Regjistri serial</title>";
     html += "<style>";
     html += "*{box-sizing:border-box}";
     html += "body{margin:0;padding:16px;background:#080b10;color:#e8faff;font-family:Arial,Helvetica,sans-serif}";
@@ -255,10 +303,10 @@ void WebServerManager::handleLogsPage()
     html += "pre{background:#10161e;border:1px solid #202b36;border-radius:10px;color:#b9d1da;font:12px/1.55 monospace;white-space:pre-wrap;overflow-wrap:anywhere;overflow:auto;height:70vh;min-height:220px;padding:14px;margin:0}";
     html += ".note{color:#72838e;font-size:12px;margin:10px 2px}";
     html += "</style></head><body><main class='container'>";
-    html += "<nav class='nav'><a href='/'>Dashboard</a><a href='/weather'>Weather</a><a href='/tuya'>Tuya</a><a href='/settings'>Settings</a><a class='active' href='/logs'>Logs</a><a href='/api'>API Status</a></nav>";
-    html += "<div class='heading'><h1>Serial Terminal</h1><button id='scrollButton' type='button'>Poshtë</button></div>";
+    html += "<nav class='nav'><a href='/'>Ballina</a><a href='/weather'>Moti</a><a href='/tuya'>Tuya</a><a href='/settings'>Cilësimet</a><a class='active' href='/logs'>Regjistri</a><a href='/api'>Gjendja API</a></nav>";
+    html += "<div class='heading'><h1>Regjistri serial</h1><button id='scrollButton' type='button'>Në fund</button></div>";
     html += "<pre id='logs'>Duke pritur logjet...</pre>";
-    html += "<div class='note'>Shfaqen mesazhet e fundit të ruajtura nga ora. Rifreskohet çdo 2 sekonda.</div>";
+    html += "<div class='note'>Shfaqen mesazhet e fundit të ruajtura nga ora. Përditësohet çdo 2 sekonda.</div>";
     appendPageFooter(html);
     html += "</main><script>";
     html += "const panel=document.getElementById('logs');";
@@ -275,8 +323,9 @@ void WebServerManager::handleApiPage()
 
     html += "<!DOCTYPE html>";
     html += "<html><head>";
+    html += "<meta charset='UTF-8'>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
-    html += "<title>API Status</title>";
+    html += "<title>Gjendja e API-së</title>";
 
     html += "<style>";
     html += "body{font-family:Arial,sans-serif;background:#111;color:#eee;padding:20px;}";
@@ -293,19 +342,19 @@ html += ".nav a.active{color:#00eaff;border-color:#00eaff;}";
     html += "</head><body>";
 
    html += "<div class='nav'>";
-html += "<a href='/'>Dashboard</a>";
-html += "<a href='/weather'>Weather</a>";
+html += "<a href='/'>Ballina</a>";
+html += "<a href='/weather'>Moti</a>";
 html += "<a href='/tuya'>Tuya</a>";
-html += "<a href='/settings'>Settings</a>";
-html += "<a href='/logs'>Logs</a>";
-html += "<a href='/api' class='active'>API Status</a>";
+html += "<a href='/settings'>Cilësimet</a>";
+html += "<a href='/logs'>Regjistri</a>";
+html += "<a href='/api' class='active'>Gjendja API</a>";
 html += "</div>";
 
-html += "<h1>API Status</h1>";
+html += "<h1>Gjendja e API-së</h1>";
 
-html += "<button onclick='loadAPI()'>Refresh</button>";
+html += "<button onclick='loadAPI()'>Përditëso</button>";
 
-    html += "<pre id='json'>Loading...</pre>";
+    html += "<pre id='json'>Duke u ngarkuar...</pre>";
 
         appendPageFooter(html);
 
@@ -316,7 +365,7 @@ html += "<button onclick='loadAPI()'>Refresh</button>";
     html += "const data=await response.json();";
     html += "document.getElementById('json').textContent=JSON.stringify(data,null,2);";
     html += "}catch(e){";
-    html += "document.getElementById('json').textContent='API error: '+e;";
+    html += "document.getElementById('json').textContent='Gabim në API: '+e;";
     html += "}";
     html += "}";
     html += "loadAPI();";
@@ -360,12 +409,12 @@ void WebServerManager::handleTuya()
     html += "<div class='container'>";
 
     html += "<div class='nav'>";
-    html += "<a href='/'>Dashboard</a>";
-    html += "<a href='/weather'>Weather</a>";
+    html += "<a href='/'>Ballina</a>";
+    html += "<a href='/weather'>Moti</a>";
     html += "<a class='active' href='/tuya'>Tuya</a>";
-    html += "<a href='/settings'>Settings</a>";
-    html += "<a href='/logs'>Logs</a>";
-    html += "<a href='/api'>API Status</a>";
+    html += "<a href='/settings'>Cilësimet</a>";
+    html += "<a href='/logs'>Regjistri</a>";
+    html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     html += "<h1>ORA — Tuya TH01</h1>";
@@ -374,26 +423,26 @@ void WebServerManager::handleTuya()
 
     if (tuyaService.isOnline())
     {
-        html += "<div class='status'>● ONLINE</div>";
+        html += "<div class='status'>● NË LINJË</div>";
 
-        html += "<div class='label'>Temperature</div>";
+        html += "<div class='label'>Temperatura</div>";
         html += "<div class='value'>";
         html += String(tuyaService.getTemperature(), 1);
         html += " &deg;C</div>";
 
-        html += "<div class='label'>Humidity</div>";
+        html += "<div class='label'>Lagështira</div>";
         html += "<div class='value'>";
         html += String(tuyaService.getHumidity(), 1);
         html += " %</div>";
 
-        html += "<div class='label'>Battery</div>";
+        html += "<div class='label'>Bateria</div>";
         html += "<div class='value'>";
         html += String(tuyaService.getBattery());
         html += " %</div>";
     }
     else
     {
-        html += "<div style='color:#ff4444;font-weight:bold;'>● OFFLINE</div>";
+        html += "<div style='color:#ff4444;font-weight:bold;'>● JASHTË LINJËS</div>";
         html += "<p>Tuya TH01 nuk është aktualisht i disponueshëm.</p>";
     }
 
@@ -418,7 +467,7 @@ void WebServerManager::handleWeather()
     html += "<meta charset='UTF-8'>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
     html += "<meta http-equiv='refresh' content='300'>";
-    html += "<title>ORA - Weather</title>";
+    html += "<title>ORA - Moti</title>";
 
     html += "<style>";
     html += "body{font-family:Arial,sans-serif;background:#111;color:#eee;margin:0;padding:20px;}";
@@ -446,20 +495,20 @@ void WebServerManager::handleWeather()
 
     // Navigation
     html += "<div class='nav'>";
-    html += "<a href='/'>Dashboard</a>";
-    html += "<a class='active' href='/weather'>Weather</a>";
+    html += "<a href='/'>Ballina</a>";
+    html += "<a class='active' href='/weather'>Moti</a>";
     html += "<a href='/tuya'>Tuya</a>";
-    html += "<a href='/settings'>Settings</a>";
-    html += "<a href='/logs'>Logs</a>";
-    html += "<a href='/api'>API Status</a>";
+    html += "<a href='/settings'>Cilësimet</a>";
+    html += "<a href='/logs'>Regjistri</a>";
+    html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
-    html += "<h1>ORA — Weather</h1>";
+    html += "<h1>ORA — Moti</h1>";
 
     if (weather == nullptr)
     {
         html += "<div class='card'>";
-        html += "Weather service unavailable.";
+        html += "Shërbimi i motit nuk është i disponueshëm.";
         html += "</div>";
         appendPageFooter(html, true);
         html += "</div></body></html>";
@@ -473,7 +522,7 @@ void WebServerManager::handleWeather()
     if (!data.valid)
     {
         html += "<div class='card'>";
-        html += "Weather data is not available.";
+        html += "Të dhënat e motit nuk janë të disponueshme.";
         html += "</div>";
         appendPageFooter(html, true);
         html += "</div></body></html>";
@@ -486,75 +535,75 @@ void WebServerManager::handleWeather()
     // CURRENT WEATHER
     // --------------------------------------------------------
 
-    html += "<h2>Current Weather</h2>";
+    html += "<h2>Moti aktual</h2>";
 
     html += "<div class='grid'>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Temperature</div>";
+    html += "<div class='label'>Temperatura</div>";
     html += "<div class='value'>";
     html += String(data.temperature, 1);
     html += " &deg;C</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Feels like</div>";
+    html += "<div class='label'>Temperatura e ndier</div>";
     html += "<div class='value'>";
     html += String(data.apparentTemperature, 1);
     html += " &deg;C</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Humidity</div>";
+    html += "<div class='label'>Lagështira</div>";
     html += "<div class='value'>";
     html += String(data.humidity, 0);
     html += " %</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Pressure</div>";
+    html += "<div class='label'>Presioni</div>";
     html += "<div class='value'>";
     html += String(data.pressure, 1);
     html += " hPa</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Wind</div>";
+    html += "<div class='label'>Era</div>";
     html += "<div class='value'>";
     html += String(data.windSpeed, 1);
     html += " km/h</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Wind direction</div>";
+    html += "<div class='label'>Drejtimi i erës</div>";
     html += "<div class='value'>";
     html += String(data.windDirection, 0);
     html += " &deg;</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Wind gusts</div>";
+    html += "<div class='label'>Shpejtësia maksimale e erës</div>";
     html += "<div class='value'>";
     html += String(data.windGusts, 1);
     html += " km/h</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Cloud cover</div>";
+    html += "<div class='label'>Vranësirat</div>";
     html += "<div class='value'>";
     html += String(data.cloudCover, 0);
     html += " %</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Precipitation</div>";
+    html += "<div class='label'>Reshjet</div>";
     html += "<div class='value'>";
     html += String(data.precipitation, 1);
     html += " mm</div>";
     html += "</div>";
 
     html += "<div class='card'>";
-    html += "<div class='label'>Rain</div>";
+    html += "<div class='label'>Shiu</div>";
     html += "<div class='value'>";
     html += String(data.rain, 1);
     html += " mm</div>";
@@ -566,20 +615,20 @@ void WebServerManager::handleWeather()
     // 7 DAY FORECAST
     // --------------------------------------------------------
 
-    html += "<h2>7 Day Forecast</h2>";
+    html += "<h2>Parashikimi për 7 ditë</h2>";
 
     html += "<div class='forecast'>";
 
     html += "<table>";
 
     html += "<tr>";
-    html += "<th>Date</th>";
-    html += "<th>Min</th>";
-    html += "<th>Max</th>";
-    html += "<th>Rain</th>";
-    html += "<th>Chance</th>";
-    html += "<th>Wind</th>";
-    html += "<th>Code</th>";
+    html += "<th>Data</th>";
+    html += "<th>Min.</th>";
+    html += "<th>Max.</th>";
+    html += "<th>Reshje</th>";
+    html += "<th>Mundësia</th>";
+    html += "<th>Erë</th>";
+    html += "<th>Kodi</th>";
     html += "</tr>";
 
     for (int i = 0; i < WeatherService::FORECAST_DAYS; i++)

@@ -6,6 +6,10 @@
 static const char* AP_SSID = "oraPas88888888";
 
 static const byte DNS_PORT = 53;
+static const IPAddress STA_IP(192, 168, 1, 133);
+static const IPAddress STA_GATEWAY(192, 168, 1, 1);
+static const IPAddress STA_SUBNET(255, 255, 255, 0);
+static const IPAddress STA_DNS(192, 168, 1, 1);
 
 WiFiManager::WiFiManager()
     : portalServer(80),
@@ -57,10 +61,19 @@ bool WiFiManager::connectToWiFi(uint32_t timeoutMs) {
         return false;
     }
 
+    if (!WiFi.config(
+            STA_IP,
+            STA_GATEWAY,
+            STA_SUBNET,
+            STA_DNS
+        )) {
+        Serial.println("WiFi: failed to configure static IP 192.168.1.133");
+        return false;
+    }
+
     Serial.println("Connecting to WiFi...");
-   
-    WiFi.begin(wifiSSID.c_str(),wifiPassword.c_str()
-    );
+
+    WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 
     unsigned long startAttempt = millis();
 

@@ -1,4 +1,5 @@
 #include "ClockDisplay.h"
+#include "DisplayText.h"
 
 namespace
 {
@@ -28,13 +29,13 @@ const bool digitSegments[10][7] =
 };
 
 const char* const days[] = {
-    "E diel", "E hene", "E marte", "E merkure",
-    "E enjte", "E premte", "E shtune"
+    "E diel", "E hënë", "E martë", "E mërkurë",
+    "E enjte", "E premte", "E shtunë"
 };
 
 const char* const months[] = {
-    "Janar", "Shkurt", "Mars", "Prill", "Maj", "Qershor",
-    "Korrik", "Gusht", "Shtator", "Tetor", "Nentor", "Dhjetor"
+    "janar", "shkurt", "mars", "prill", "maj", "qershor",
+    "korrik", "gusht", "shtator", "tetor", "nëntor", "dhjetor"
 };
 
 int lastDigits[4] = { -1, -1, -1, -1 };
@@ -166,13 +167,23 @@ void updateDateDisplay(TFT_eSPI& display, const struct tm& timeinfo)
 
     lastDay = timeinfo.tm_mday;
     display.fillRect(0, 185, 480, 55, COLOR_BG);
-    char dateText[50];
-    snprintf(dateText, sizeof(dateText), "%s, %02d %s %d",
-             days[timeinfo.tm_wday], timeinfo.tm_mday, months[timeinfo.tm_mon],
-             timeinfo.tm_year + 1900);
+    char dateText[32];
+    snprintf(dateText, sizeof(dateText), "%d %s %d",
+             timeinfo.tm_mday, months[timeinfo.tm_mon], timeinfo.tm_year + 1900);
     display.setTextColor(COLOR_TIME, COLOR_BG);
-    display.setTextFont(4);
-    const int textWidth = display.textWidth(dateText);
-    display.setCursor(MAIN_CONTENT_CENTER_X - textWidth / 2, 187);
-    display.print(dateText);
+    constexpr uint8_t dateTextSize = 3;
+    display.setTextFont(1);
+    display.setTextSize(dateTextSize);
+    display.setCursor(
+        MAIN_CONTENT_CENTER_X -
+            albanianTextWidth(days[timeinfo.tm_wday], dateTextSize) / 2,
+        184
+    );
+    drawAlbanianText(display, days[timeinfo.tm_wday], dateTextSize);
+    display.setCursor(
+        MAIN_CONTENT_CENTER_X - albanianTextWidth(dateText, dateTextSize) / 2,
+        208
+    );
+    drawAlbanianText(display, dateText, dateTextSize);
+    display.setTextSize(1);
 }

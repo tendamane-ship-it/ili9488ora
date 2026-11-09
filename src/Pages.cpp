@@ -22,12 +22,12 @@ String getDashboardPage()
     String html;
 
     html += "<!DOCTYPE html>";
-    html += "<html>";
+    html += "<html lang='sq'>";
     html += "<head>";
 
     html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
     html += "<meta charset='UTF-8'>";
-    html += "<title>ORA e Lapit  Dashboard</title>";
+    html += "<title>ORA - Paneli</title>";
 
     // ============================================================
     // STYLE
@@ -283,12 +283,12 @@ html += "}";
     // ============================================================
 
     html += "<div class='nav'>";
-html += "<a class='active' href='/'>Dashboard</a>";
-html += "<a href='/weather'>Weather</a>";
+html += "<a class='active' href='/'>Ballina</a>";
+html += "<a href='/weather'>Moti</a>";
 html += "<a href='/tuya'>Tuya</a>";
-html += "<a href='/settings'>Settings</a>";
-html += "<a href='/logs'>Logs</a>";
-html += "<a href='/api'>API Status</a>";
+html += "<a href='/settings'>Cilësimet</a>";
+html += "<a href='/logs'>Regjistri</a>";
+html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
@@ -297,7 +297,7 @@ html += "<a href='/api'>API Status</a>";
 
     html += "<div class='clock-card'>";
 
-    html += "<div class='clock-label'>ORA E SAKTE</div>";
+    html += "<div class='clock-label'>ORA E SAKTË</div>";
 
     html += "<div class='clock' id='time'>--:--:--</div>";
 
@@ -309,7 +309,7 @@ html += "<a href='/api'>API Status</a>";
     // ENVIRONMENT
     // ============================================================
 
-    html += "<div class='section-title'>AMBIENTALE</div>";
+    html += "<div class='section-title'>MJEDISI</div>";
 
     html += "<div class='grid'>";
 
@@ -322,7 +322,7 @@ html += "<a href='/api'>API Status</a>";
 
     // Humidity
     html += "<div class='card'>";
-    html += "<div class='card-title'>Lageshtira</div>";
+    html += "<div class='card-title'>Lagështira</div>";
     html += "<div class='value' id='humidity'>--</div>";
     html += "<span class='unit'>%</span>";
     html += "</div>";
@@ -336,7 +336,7 @@ html += "<a href='/api'>API Status</a>";
 
     // Lux
     html += "<div class='card'>";
-    html += "<div class='card-title'>Ndricimi</div>";
+    html += "<div class='card-title'>Ndriçimi</div>";
     html += "<div class='value' id='lux'>--</div>";
     html += "<span class='unit'>lux</span>";
     html += "</div>";
@@ -350,8 +350,8 @@ html += "<a href='/api'>API Status</a>";
 
     // Motion
     html += "<div class='card'>";
-    html += "<div class='card-title'>Levizje</div>";
-    html += "<div id='motion' class='badge'>Ska Levizje</div>";
+    html += "<div class='card-title'>Lëvizja</div>";
+    html += "<div id='motion' class='badge'>Pa lëvizje</div>";
     html += "<div class='muted' style='margin-top:12px;font-size:12px;' id='pirStatus'>PIR</div>";
     html += "</div>";
 
@@ -361,7 +361,7 @@ html += "<a href='/api'>API Status</a>";
     // WEATHER
     // ============================================================
 
-    html += "<div class='section-title'>SHERBIMI I MOTIT</div>";
+    html += "<div class='section-title'>SHËRBIMI I MOTIT</div>";
 
     html += "<div class='grid'>";
 
@@ -388,14 +388,14 @@ html += "<a href='/api'>API Status</a>";
     // NETWORK + SYSTEM
     // ============================================================
 
-    html += "<div class='section-title'>SYSTEM</div>";
+    html += "<div class='section-title'>SISTEMI</div>";
 
     html += "<div class='info-grid'>";
 
     // Network
     html += "<div class='info-card'>";
 
-    html += "<div class='card-title'>Network</div>";
+    html += "<div class='card-title'>Rrjeti</div>";
 
     html += "<div class='info-row'>";
     html += "<span class='info-label'>Wi-Fi</span>";
@@ -403,17 +403,17 @@ html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>IP Address</span>";
+    html += "<span class='info-label'>Adresa IP</span>";
     html += "<span class='info-value' id='ip'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Signal</span>";
+    html += "<span class='info-label'>Sinjali</span>";
     html += "<span class='info-value' id='rssi'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Connection</span>";
+    html += "<span class='info-label'>Lidhja</span>";
     html += "<span class='info-value' id='wifiStatus'>--</span>";
     html += "</div>";
 
@@ -430,7 +430,7 @@ html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Free Heap</span>";
+    html += "<span class='info-label'>Memoria e lirë</span>";
     html += "<span class='info-value' id='heap'>--</span>";
     html += "</div>";
 
@@ -440,7 +440,7 @@ html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Uptime</span>";
+    html += "<span class='info-label'>Koha e punës</span>";
     html += "<span class='info-value' id='uptime'>--</span>";
     html += "</div>";
 
@@ -452,32 +452,32 @@ html += "<a href='/api'>API Status</a>";
     // ORA SETTINGS STATUS
     // ============================================================
 
-    html += "<div class='section-title'>ORA SETTINGS</div>";
+    html += "<div class='section-title'>CILËSIMET E ORËS</div>";
 
     html += "<div class='info-card'>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Clock Format</span>";
+    html += "<span class='info-label'>Formati i orës</span>";
     html += "<span class='info-value' id='format'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Date</span>";
+    html += "<span class='info-label'>Data</span>";
     html += "<span class='info-value' id='dateSetting'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Weather</span>";
+    html += "<span class='info-label'>Moti</span>";
     html += "<span class='info-value' id='weatherSetting'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Light Sensor</span>";
+    html += "<span class='info-label'>Sensori i dritës</span>";
     html += "<span class='info-value' id='lightSetting'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Tuya Display</span>";
+    html += "<span class='info-label'>Shfaqja Tuya</span>";
     html += "<span class='info-value' id='tuyaSetting'>--</span>";
     html += "</div>";
 
@@ -487,17 +487,17 @@ html += "<a href='/api'>API Status</a>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Weather Display</span>";
+    html += "<span class='info-label'>Koha e motit</span>";
     html += "<span class='info-value' id='weatherTime'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Local Sensors Display</span>";
+    html += "<span class='info-label'>Koha e sensorëve</span>";
     html += "<span class='info-value' id='localTime'>--</span>";
     html += "</div>";
 
     html += "<div class='info-row'>";
-    html += "<span class='info-label'>Tuya Display</span>";
+    html += "<span class='info-label'>Kohëzgjatja e shfaqjes Tuya</span>";
     html += "<span class='info-value' id='tuyaTime'>--</span>";
     html += "</div>";
 
@@ -508,7 +508,7 @@ html += "<a href='/api'>API Status</a>";
     // ============================================================
 
     html += "<div class='footer'>";
-    html += "<div>ORA • ILI9488 CLOCK • ESP32-S3</div>";
+    html += "<div>ORA • ORË ILI9488 • ESP32-S3</div>";
     html += "<div style='margin-top:5px'>Mundësuar nga Murat Mane</div>";
     html += "</div>";
 
@@ -535,7 +535,7 @@ html += "<a href='/api'>API Status</a>";
     html += "sec%=3600;";
     html += "let m=Math.floor(sec/60);";
     html += "let s=sec%60;";
-    html += "return (d?d+'d ':'')+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');";
+    html += "return (d?d+' ditë ':'')+String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');";
     html += "}";
 
     html += "function updateDashboard(){";
@@ -545,7 +545,7 @@ html += "<a href='/api'>API Status</a>";
     html += ".then(d=>{";
 
     // Status
-    html += "setText('statusText',d.wifiConnected?'ONLINE':'OFFLINE');";
+    html += "setText('statusText',d.wifiConnected?'NË LINJË':'JASHTË LINJËS');";
 
     // Time
     html += "setText('time',d.time||'--:--:--');";
@@ -562,27 +562,26 @@ html += "<a href='/api'>API Status</a>";
     html += "setText('lux',d.lux==null?'--':Number(d.lux).toFixed(0));";
 
     // Gas / Air
-    html += "setText('gas',d.bmeGas==null?'Gas --':('Gas '+Number(d.bmeGas).toFixed(0)));";
+    html += "setText('gas',d.bmeGas==null?'Gaz --':('Gaz '+Number(d.bmeGas).toFixed(0)));";
 
     html += "let air='--';";
-    html += "if(d.bme680OK&&d.bmeGas!=null){";
-    html += "if(d.bmeGas>=100000)air='GOOD';";
-    html += "else if(d.bmeGas>=50000)air='FAIR';";
-    html += "else air='POOR';";
+    html += "if(d.bme680OK){";
+    html += "if(d.bmeIaq==null||d.bmeIaqAccuracy===0)air='Po kalibrohet';";
+    html += "else air=Number(d.bmeIaq).toFixed(0)+' '+(d.airQualityCategory||'')+' - Saktesia: '+(d.bmeIaqAccuracyLabel||'E pasigurt');";
     html += "}";
     html += "setText('air',air);";
 
     // PIR
     html += "const motion=document.getElementById('motion');";
     html += "if(d.pirMotion){";
-    html += "motion.textContent='MOTION';";
+    html += "motion.textContent='LËVIZJE';";
     html += "motion.className='badge';";
     html += "}else{";
-    html += "motion.textContent='NO MOTION';";
+    html += "motion.textContent='PA LËVIZJE';";
     html += "motion.className='badge off';";
     html += "}";
 
-    html += "setText('pirStatus',d.pirState===1?'Motion detected':'Monitoring');";
+    html += "setText('pirStatus',d.pirState===1?'U zbulua lëvizje':'Në vëzhgim');";
 
     // Weather
     html += "setText('weatherTemp',d.temperature==null?'--':Number(d.temperature).toFixed(1));";
@@ -593,7 +592,7 @@ html += "<a href='/api'>API Status</a>";
     html += "setText('wifi',d.wifi||'--');";
     html += "setText('ip',d.ip||'--');";
     html += "setText('rssi',d.rssi==null?'--':d.rssi+' dBm');";
-    html += "setText('wifiStatus',d.wifiConnected?'CONNECTED':'OFFLINE');";
+    html += "setText('wifiStatus',d.wifiConnected?'I LIDHUR':'I SHKËPUTUR');";
 
     // System
     html += "setText('cpu',d.cpu==null?'--':d.cpu+' MHz');";
@@ -602,21 +601,21 @@ html += "<a href='/api'>API Status</a>";
     html += "setText('uptime',formatUptime(d.uptime));";
 
     // Settings
-    html += "setText('format',d.setting24Hour?'24 HOUR':'12 HOUR');";
+    html += "setText('format',d.setting24Hour?'24 ORË':'12 ORË');";
     html += "setText('dateSetting',onOff(d.settingDate));";
     html += "setText('weatherSetting',onOff(d.settingWeather));";
     html += "setText('lightSetting',onOff(d.settingLightSensor));";
     html += "setText('tuyaSetting',onOff(d.settingTuyaDisplay));";
     html += "setText('pirSetting',onOff(d.settingPIR));";
 
-    html += "setText('weatherTime',d.weatherDisplayTime+' sec');";
-    html += "setText('localTime',d.localSensorsDisplayTime+' sec');";
-    html += "setText('tuyaTime',d.tuyaDisplayTime+' sec');";
+    html += "setText('weatherTime',d.weatherDisplayTime+' sek');";
+    html += "setText('localTime',d.localSensorsDisplayTime+' sek');";
+    html += "setText('tuyaTime',d.tuyaDisplayTime+' sek');";
 
     html += "})";
 
     html += ".catch(e=>{";
-    html += "setText('statusText','OFFLINE');";
+    html += "setText('statusText','JASHTË LINJËS');";
     html += "});";
 
     html += "}";
@@ -637,13 +636,18 @@ String getSettingsPage()
    
 
     html += "<!DOCTYPE html>";
-    html += "<html lang='en'>";
+    html += "<html lang='sq'>";
+    html += "<head>";
+    html += "<meta charset='UTF-8'>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<title>ORA - Cilësimet</title>";
 
 
 
     html += "<style>";
 
     html += "*{box-sizing:border-box;}";
+    html += "html{font-size:16px;-webkit-text-size-adjust:100%;}";
 
     html += "body{";
     html += "margin:0;";
@@ -708,11 +712,11 @@ html += "}";
     html += "}";
 
     html += ".label{";
-    html += "font-size:15px;";
+    html += "font-size:17px;";
     html += "}";
 
     html += ".description{";
-    html += "font-size:12px;";
+    html += "font-size:14px;";
     html += "color:#7e8a99;";
     html += "margin-top:4px;";
     html += "}";
@@ -730,7 +734,7 @@ html += "}";
     html += "border:1px solid #344352;";
     html += "border-radius:8px;";
     html += "padding:9px 12px;";
-    html += "font-size:14px;";
+    html += "font-size:16px;";
     html += "}";
 
     html += "select{";
@@ -746,7 +750,7 @@ html += "}";
     html += "color:#00d9ff;";
     html += "padding:6px 10px;";
     html += "border-radius:7px;";
-    html += "font-size:12px;";
+    html += "font-size:14px;";
     html += "}";
 
     html += ".save{";
@@ -822,34 +826,51 @@ html += "}";
 
     html += "}";
     html += ".nav{";
-html += "display:flex;";
-html += "gap:8px;";
-html += "width:100%;";
-html += "flex-wrap:wrap;";
-html += "margin-top:12px;";
-html += "margin-bottom:20px;";
-html += "justify-content:flex-start;";
-html += "}";
+    html += "display:flex;";
+    html += "gap:8px;";
+    html += "width:100%;";
+    html += "flex-wrap:wrap;";
+    html += "margin-top:12px;";
+    html += "margin-bottom:20px;";
+    html += "justify-content:flex-start;";
+    html += "}";
 
-html += ".nav a{";
-html += "text-decoration:none;";
-html += "color:#9aa7b3;";
-html += "background:#151b23;";
-html += "border:1px solid #202b38;";
-html += "padding:9px 15px;";
-html += "border-radius:8px;";
-html += "font-size:14px;";
-html += "}";
+    html += ".nav a{";
+    html += "text-decoration:none;";
+    html += "color:#9aa7b3;";
+    html += "background:#151b23;";
+    html += "border:1px solid #202b38;";
+    html += "padding:9px 15px;";
+    html += "border-radius:8px;";
+    html += "font-size:15px;";
+    html += "}";
 
-html += ".nav a:hover{";
-html += "color:#00eaff;";
-html += "border-color:#00eaff;";
-html += "}";
+    html += ".nav a:hover{";
+    html += "color:#00eaff;";
+    html += "border-color:#00eaff;";
+    html += "}";
 
-html += ".nav a.active{";
-html += "color:#00eaff;";
-html += "border-color:#00eaff;";
-html += "}";
+    html += ".nav a.active{";
+    html += "color:#00eaff;";
+    html += "border-color:#00eaff;";
+    html += "}";
+
+    html += "@media(max-width:600px){";
+    html += ".container{padding:16px;}";
+    html += ".logo{font-size:32px;}";
+    html += "h2{font-size:20px;}";
+    html += ".setting{flex-direction:column;align-items:stretch;gap:10px;padding:18px 0;}";
+    html += ".label{font-size:18px;line-height:1.35;}";
+    html += ".description{font-size:15px;line-height:1.4;}";
+    html += ".control{width:100%;margin-top:0;}";
+    html += "select,input[type='number']{min-height:48px;font-size:17px;}";
+    html += "select{width:100%;}";
+    html += "input[type='number']{width:120px;}";
+    html += ".nav{gap:8px;}";
+    html += ".nav a{flex:1 1 30%;text-align:center;padding:12px 8px;font-size:15px;}";
+    html += ".save,.restart{min-height:52px;font-size:18px;}";
+    html += ".note{font-size:14px;line-height:1.4;}";
+    html += "}";
 
     html += "</style>";
 
@@ -864,12 +885,12 @@ html += "<div class='header'>";
 html += "<div class='logo'>ORA</div>";
 
 html += "<div class='nav'>";
-html += "<a href='/'>Dashboard</a>";
-html += "<a href='/weather'>Weather</a>";
+html += "<a href='/'>Ballina</a>";
+html += "<a href='/weather'>Moti</a>";
 html += "<a href='/tuya'>Tuya</a>";
-html += "<a class='active' href='/settings'>Settings</a>";
-html += "<a href='/logs'>Logs</a>";
-html += "<a href='/api'>API Status</a>";
+html += "<a class='active' href='/settings'>Cilësimet</a>";
+html += "<a href='/logs'>Regjistri</a>";
+html += "<a href='/api'>Gjendja API</a>";
 html += "</div>";
 
 html += "</div>";
@@ -885,14 +906,14 @@ html += "</div>";
 
     html += "<div class='card'>";
 
-    html += "<h2>Time / Display</h2>";
+    html += "<h2>Ora dhe ekrani</h2>";
 
     // Clock format
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Clock format</div>";
-    html += "<div class='description'>Choose 12 or 24 hour format</div>";
+    html += "<div class='label'>Formati i orës</div>";
+    html += "<div class='description'>Zgjidh formatin 12- ose 24-orësh</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -919,8 +940,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Date</div>";
-    html += "<div class='description'>Show date on display</div>";
+    html += "<div class='label'>Data</div>";
+    html += "<div class='description'>Shfaq datën në ekran</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -951,14 +972,14 @@ html += "</div>";
 
     html += "<div class='card'>";
 
-    html += "<h2>Lower Panel</h2>";
+    html += "<h2>Paneli i poshtëm</h2>";
 
     // Weather panel
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Internet weather</div>";
-    html += "<div class='description'>Show or hide internet weather</div>";
+    html += "<div class='label'>Moti nga interneti</div>";
+    html += "<div class='description'>Shfaq ose fshih motin nga interneti</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -984,8 +1005,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Weather display time</div>";
-    html += "<div class='description'>Seconds to show internet weather</div>";
+    html += "<div class='label'>Kohëzgjatja e motit</div>";
+    html += "<div class='description'>Sekondat për shfaqjen e motit nga interneti</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -994,7 +1015,7 @@ html += "</div>";
     html += String(weatherDisplayTime / 1000);
     html += "'>";
 
-    html += "<span class='badge'>sec</span>";
+    html += "<span class='badge'>sek</span>";
 
     html += "</div>";
 
@@ -1003,8 +1024,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Local sensors</div>";
-    html += "<div class='description'>Show or hide BME680 / BH1750 readings</div>";
+    html += "<div class='label'>Sensorët lokalë</div>";
+    html += "<div class='description'>Shfaq ose fshih leximet BME680 / BH1750</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -1030,8 +1051,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Local sensors display time</div>";
-    html += "<div class='description'>Seconds to show BME680 / BH1750 readings</div>";
+    html += "<div class='label'>Kohëzgjatja e sensorëve lokalë</div>";
+    html += "<div class='description'>Sekondat për shfaqjen e leximeve BME680 / BH1750</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -1040,7 +1061,7 @@ html += "</div>";
     html += String(localSensorsDisplayTime / 1000);
     html += "'>";
 
-    html += "<span class='badge'>sec</span>";
+    html += "<span class='badge'>sek</span>";
 
     html += "</div>";
 
@@ -1049,8 +1070,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Tuya display</div>";
-    html += "<div class='description'>Show or hide Tuya temperature, humidity and battery</div>";
+    html += "<div class='label'>Shfaqja Tuya</div>";
+    html += "<div class='description'>Shfaq ose fshih temperaturën, lagështirën dhe baterinë Tuya</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -1076,8 +1097,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Tuya display time</div>";
-    html += "<div class='description'>Seconds to show Tuya readings</div>";
+    html += "<div class='label'>Kohëzgjatja e shfaqjes Tuya</div>";
+    html += "<div class='description'>Sekondat për shfaqjen e leximeve Tuya</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -1086,7 +1107,7 @@ html += "</div>";
     html += String(tuyaDisplayTime / 1000);
     html += "'>";
 
-    html += "<span class='badge'>sec</span>";
+    html += "<span class='badge'>sek</span>";
 
     html += "</div>";
 
@@ -1100,14 +1121,14 @@ html += "</div>";
 
     html += "<div class='card'>";
 
-    html += "<h2>Sensors</h2>";
+    html += "<h2>Sensorët</h2>";
 
     // Weather
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Weather</div>";
-    html += "<div class='description'>Internet weather information</div>";
+    html += "<div class='label'>Moti</div>";
+    html += "<div class='description'>Informacioni i motit nga interneti</div>";
     html += "</div>";
 
     html += "<div class='badge'>";
@@ -1120,8 +1141,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>Light sensor</div>";
-    html += "<div class='description'>BH1750 ambient light</div>";
+    html += "<div class='label'>Sensori i dritës</div>";
+    html += "<div class='description'>Matësi i ndriçimit të ambientit BH1750</div>";
     html += "</div>";
 
     html += "<div class='badge'>";
@@ -1134,8 +1155,8 @@ html += "</div>";
     html += "<div class='setting'>";
 
     html += "<div>";
-    html += "<div class='label'>PIR sensor</div>";
-    html += "<div class='description'>Motion detection and wake-up</div>";
+    html += "<div class='label'>Sensori PIR</div>";
+    html += "<div class='description'>Zbulimi i lëvizjes dhe zgjimi i ekranit</div>";
     html += "</div>";
 
     html += "<div class='control'>";
@@ -1165,14 +1186,14 @@ html += "</div>";
 // --------------------------------------------------------
 html += "<div class='card'>";
 
-html += "<h2>System</h2>";
+html += "<h2>Sistemi</h2>";
 
 // Screensaver
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Screensaver</div>";
-html += "<div class='description'>Enable or disable the screen saver</div>";
+html += "<div class='label'>Ruajtësi i ekranit</div>";
+html += "<div class='description'>Aktivizo ose çaktivizo ruajtësin e ekranit</div>";
 html += "</div>";
 
 html += "<div class='control'>";
@@ -1197,8 +1218,8 @@ html += "</div>";
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Screensaver timeout</div>";
-html += "<div class='description'>Minutes before the screen saver starts</div>";
+html += "<div class='label'>Koha deri te ruajtësi i ekranit</div>";
+html += "<div class='description'>Minutat para se të aktivizohet ruajtësi i ekranit</div>";
 html += "</div>";
 
 html += "<div class='control'>";
@@ -1215,8 +1236,8 @@ html += "</div>";
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Greeting</div>";
-html += "<div class='description'>Show welcome message when PIR wakes the clock</div>";
+html += "<div class='label'>Përshëndetja</div>";
+html += "<div class='description'>Shfaq përshëndetjen kur sensori PIR zgjon orën</div>";
 html += "</div>";
 
 html += "<div class='control'>";
@@ -1240,11 +1261,11 @@ html += "</div>";
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Web Server</div>";
-html += "<div class='description'>ESP32 web interface</div>";
+html += "<div class='label'>Serveri i uebit</div>";
+html += "<div class='description'>Ndërfaqja e uebit e ESP32</div>";
 html += "</div>";
 
-html += "<div class='badge'>RUNNING</div>";
+html += "<div class='badge'>NË PUNË</div>";
 
 html += "</div>";
 
@@ -1257,14 +1278,14 @@ html += "</div>";
 
 html += "<div class='card'>";
 
-html += "<h2>Night Mode</h2>";
+html += "<h2>Modaliteti i natës</h2>";
 
 // Night Mode ON/OFF
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Night Mode</div>";
-html += "<div class='description'>Put the display to sleep when the room gets dark</div>";
+html += "<div class='label'>Modaliteti i natës</div>";
+html += "<div class='description'>Fike ekranin kur dhoma errësohet</div>";
 html += "</div>";
 
 html += "<div class='control'>";
@@ -1289,8 +1310,8 @@ html += "</div>";
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Sleep below</div>";
-html += "<div class='description'>Display sleeps below this light level</div>";
+html += "<div class='label'>Fike nën</div>";
+html += "<div class='description'>Ekrani fiket kur ndriçimi bie nën këtë nivel</div>";
 html += "</div>";
 
 html += "<div class='control'>";
@@ -1311,8 +1332,8 @@ html += "</div>";
 html += "<div class='setting'>";
 
 html += "<div>";
-html += "<div class='label'>Wake above</div>";
-html += "<div class='description'>Display wakes when light rises above this level</div>";
+html += "<div class='label'>Ndize mbi</div>";
+html += "<div class='description'>Ekrani ndizet kur ndriçimi kalon këtë nivel</div>";
 html += "</div>";
 
 html += "<div class='control'>";
@@ -1335,7 +1356,7 @@ html += "</div>";
     // --------------------------------------------------------
 
     html += "<button class='save' type='submit'>";
-    html += "Save Settings";
+    html += "Ruaj cilësimet";
     html += "</button>";
 
     html += "<button type='button' class='restart' onclick='restartESP()'>";
@@ -1354,7 +1375,7 @@ html += "</form>";
 html += "<script>";
 
 html += "function restartESP(){";
-html += "if(!confirm('Doni të rinisni ESP32?')) return;";
+html += "if(!confirm('Dëshironi ta rinisni ESP32-n?')) return;";
 html += "fetch('/restart',{method:'POST'});";
 html += "alert('ESP32 po riniset...');";
 html += "}";

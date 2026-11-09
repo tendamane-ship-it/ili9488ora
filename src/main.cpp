@@ -17,6 +17,7 @@
 #include "SerialLog.h"
 #include "AboutScreen.h"
 #include "ClockDisplay.h"
+#include "DisplayText.h"
 #include "WeatherDisplay.h"
 #define TOUCH_CS   17
 #define TOUCH_IRQ  14
@@ -480,32 +481,45 @@ void updateLocalSensorsDisplay()
         tft.print("LUX: ----");
     }
 
-    // Air quality
+    // Cilesia e ajrit
     tft.setTextColor(TFT_GREEN, COLOR_BG);
-    tft.setCursor(285, WEATHER_Y + 52);
+    tft.setTextFont(1);
+    tft.setCursor(285, WEATHER_Y + 49);
 
     if (!bme680OK)
     {
-        tft.print("Ajer: --");
+        drawAlbanianText(tft, "Cilësia e ajrit: --");
     }
     else if (!bmeReadingOK)
     {
-        tft.print("AIR: ERR");
+        drawAlbanianText(tft, "Gabim në leximin e ajrit");
     }
-    else if (!airBaselineReady)
+    else if (!bmeIaqReady || bmeIaqAccuracy == 0)
     {
-        tft.print("AIR: CAL...");
+        drawAlbanianText(tft, "Cilësia: po kalibrohet");
+        tft.setCursor(285, WEATHER_Y + 61);
+        drawAlbanianText(tft, "Saktësia: e pasigurt");
     }
     else
     {
-        float ratio = bmeGas / airBaseline;
-
-        if (ratio >= 0.80)
-            tft.print("AIR: GOOD");
-        else if (ratio >= 0.50)
-            tft.print("AIR: FAIR");
+        if (bmeIaq <= 50.0f)
+            tft.setTextColor(TFT_GREEN, COLOR_BG);
+        else if (bmeIaq <= 100.0f)
+            tft.setTextColor(TFT_CYAN, COLOR_BG);
+        else if (bmeIaq <= 150.0f)
+            tft.setTextColor(TFT_YELLOW, COLOR_BG);
+        else if (bmeIaq <= 200.0f)
+            tft.setTextColor(TFT_ORANGE, COLOR_BG);
         else
-            tft.print("AIR: POOR");
+            tft.setTextColor(TFT_RED, COLOR_BG);
+
+        drawAlbanianText(tft, "Cilësia ");
+        tft.print(static_cast<int>(bmeIaq + 0.5f));
+        drawAlbanianText(tft, " - ");
+        drawAlbanianText(tft, airQualityCategory());
+        tft.setCursor(285, WEATHER_Y + 61);
+        drawAlbanianText(tft, "Saktësia: ");
+        drawAlbanianText(tft, bmeIaqAccuracyLabel());
     }
 }
 void updateTuyaDisplay()
@@ -767,7 +781,7 @@ else
 initSensors();
 setStartupStatus(
     STARTUP_BME680,
-    bmeReadingOK ? STARTUP_OK : STARTUP_ERROR
+    bme680OK ? STARTUP_OK : STARTUP_ERROR
 );
 setStartupStatus(
     STARTUP_BH1750,
@@ -798,14 +812,18 @@ lastLowerPanelChange = millis();
 void updateLowerPanel()
 {
     int currentPanel = showingTuyaData ? 2 : (showingLocalSensors ? 1 : 0);
-    bool enabled[3] = {
-        settingWeather,
-        settingLightSensor,
-        settingTuyaDisplay
+    const WeatherData weatherData = weather.getData();
+    bool available[3] = {
+        settingWeather && weatherServiceReady && weatherData.valid,
+        settingLightSensor &&
+            ((bme680OK && bmeReadingOK) ||
+             (bh1750OK && bh1750ReadingOK)),
+        settingTuyaDisplay && tuyaServiceReady && tuyaService.isOnline()
     };
-    bool anyEnabled = enabled[0] || enabled[1] || enabled[2];
+    int availableCount =
+        (int)available[0] + (int)available[1] + (int)available[2];
 
-    if (!anyEnabled)
+    if (availableCount == 0)
     {
         if (lowerPanelHasContent)
             tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
@@ -815,25 +833,22 @@ void updateLowerPanel()
         return;
     }
 
-    if (!enabled[currentPanel])
+    if (!available[currentPanel] || !lowerPanelHasContent)
     {
-        int nextPanel = 0;
-        while (!enabled[nextPanel])
-            ++nextPanel;
+        int nextPanel = currentPanel;
+        if (!available[nextPanel])
+            nextPanel = (nextPanel + 1) % 3;
+
+        while (!available[nextPanel])
+            nextPanel = (nextPanel + 1) % 3;
+
         showingLocalSensors = nextPanel == 1;
         showingTuyaData = nextPanel == 2;
         renderLowerPanel();
         return;
     }
 
-    if (!lowerPanelHasContent)
-    {
-        renderLowerPanel();
-        return;
-    }
-
-    int enabledCount = (int)enabled[0] + (int)enabled[1] + (int)enabled[2];
-    if (enabledCount > 1)
+    if (availableCount > 1)
     {
         unsigned long displayTime = currentPanel == 1
             ? localSensorsDisplayTime
@@ -844,7 +859,7 @@ void updateLowerPanel()
             do
             {
                 nextPanel = (nextPanel + 1) % 3;
-            } while (!enabled[nextPanel]);
+            } while (!available[nextPanel]);
 
             showingLocalSensors = nextPanel == 1;
             showingTuyaData = nextPanel == 2;
@@ -858,6 +873,8 @@ void updateLowerPanel()
 void loop()
 {
     wifiManager.handleClient();
+    runBsec();
+    bool screenSaverTouchWakeRequested = false;
 
 if (wifiGotIpPending)
 {
@@ -949,82 +966,90 @@ if (touchPressed && !touchWasPressed)
     if (p.z > 300 &&
         millis() - lastMenuTouch > 500)
     {
-        const ScreenMode touchedScreen = screenMode;
-
-        if (touchedScreen == SCREEN_CLOCK &&
-            p.x >= 3300 && p.x <= 4000 &&
-            p.y >= 2700 && p.y <= 3500)
+        if (screenSaverActive)
         {
+            screenSaverTouchWakeRequested = true;
             lastMenuTouch = millis();
-            Serial.println("TOUCH: OPEN MENU");
-            openMenu();
         }
-        else if (touchedScreen == SCREEN_MENU &&
-                 p.x >= 1800 && p.x <= 2250 &&
-                 p.y >= 2300 && p.y <= 2800)
+        else
         {
-            lastMenuTouch = millis();
-            setting24Hour = !setting24Hour;
+            const ScreenMode touchedScreen = screenMode;
 
-            preferences.begin("ora", false);
-            preferences.putBool("24hour", setting24Hour);
-            preferences.end();
+            if (touchedScreen == SCREEN_CLOCK &&
+                p.x >= 3300 && p.x <= 4000 &&
+                p.y >= 2700 && p.y <= 3500)
+            {
+                lastMenuTouch = millis();
+                Serial.println("TOUCH: OPEN MENU");
+                openMenu();
+            }
+            else if (touchedScreen == SCREEN_MENU &&
+                     p.x >= 1800 && p.x <= 2250 &&
+                     p.y >= 2300 && p.y <= 2800)
+            {
+                lastMenuTouch = millis();
+                setting24Hour = !setting24Hour;
 
-            Serial.printf(
-                "TIME FORMAT: %s\n",
-                setting24Hour ? "24H" : "12H"
-            );
+                preferences.begin("ora", false);
+                preferences.putBool("24hour", setting24Hour);
+                preferences.end();
 
-            drawMainMenu();
-        }
-        else if (touchedScreen == SCREEN_MENU &&
-                 p.x >= 1800 && p.x <= 2250 &&
-                 p.y >= 1600 && p.y <= 2050)
-        {
-            lastMenuTouch = millis();
-            settingDate = !settingDate;
+                Serial.printf(
+                    "TIME FORMAT: %s\n",
+                    setting24Hour ? "24H" : "12H"
+                );
 
-            preferences.begin("ora", false);
-            preferences.putBool("date", settingDate);
-            preferences.end();
+                drawMainMenu();
+            }
+            else if (touchedScreen == SCREEN_MENU &&
+                     p.x >= 1800 && p.x <= 2250 &&
+                     p.y >= 1600 && p.y <= 2050)
+            {
+                lastMenuTouch = millis();
+                settingDate = !settingDate;
 
-            Serial.printf(
-                "DATE: %s\n",
-                settingDate ? "ON" : "OFF"
-            );
+                preferences.begin("ora", false);
+                preferences.putBool("date", settingDate);
+                preferences.end();
 
-            drawMainMenu();
-        }
-        else if (touchedScreen == SCREEN_MENU &&
-                 p.x >= 1800 && p.x <= 2250 &&
-                 p.y >= 1050 && p.y <= 1500)
-        {
-            lastMenuTouch = millis();
-            Serial.println("TOUCH: OPEN ABOUT");
-            openAbout();
-        }
-        else if (touchedScreen == SCREEN_MENU &&
-                 p.x >= 1800 && p.x <= 2250 &&
-                 p.y >= 500 && p.y <= 950)
-        {
-            lastMenuTouch = millis();
-            Serial.println("TOUCH: WEATHER ICON PREVIEW");
-            openWeatherIconPreview();
-        }
-        else if (touchedScreen == SCREEN_ICON_PREVIEW)
-        {
-            lastMenuTouch = millis();
-            Serial.println("TOUCH: CLOSE WEATHER ICON PREVIEW");
-            closeMenu();
-        }
-        else if (touchedScreen == SCREEN_ABOUT &&
-                 p.z > 500 &&
-                 p.x >= 1600 && p.x <= 2550 &&
-                 p.y >= 500 && p.y <= 800)
-        {
-            lastMenuTouch = millis();
-            Serial.println("TOUCH: BACK TO CLOCK");
-            closeMenu();
+                Serial.printf(
+                    "DATE: %s\n",
+                    settingDate ? "ON" : "OFF"
+                );
+
+                drawMainMenu();
+            }
+            else if (touchedScreen == SCREEN_MENU &&
+                     p.x >= 1800 && p.x <= 2250 &&
+                     p.y >= 1050 && p.y <= 1500)
+            {
+                lastMenuTouch = millis();
+                Serial.println("TOUCH: OPEN ABOUT");
+                openAbout();
+            }
+            else if (touchedScreen == SCREEN_MENU &&
+                     p.x >= 1800 && p.x <= 2250 &&
+                     p.y >= 500 && p.y <= 950)
+            {
+                lastMenuTouch = millis();
+                Serial.println("TOUCH: WEATHER ICON PREVIEW");
+                openWeatherIconPreview();
+            }
+            else if (touchedScreen == SCREEN_ICON_PREVIEW)
+            {
+                lastMenuTouch = millis();
+                Serial.println("TOUCH: CLOSE WEATHER ICON PREVIEW");
+                closeMenu();
+            }
+            else if (touchedScreen == SCREEN_ABOUT &&
+                     p.z > 500 &&
+                     p.x >= 1600 && p.x <= 2550 &&
+                     p.y >= 500 && p.y <= 800)
+            {
+                lastMenuTouch = millis();
+                Serial.println("TOUCH: BACK TO CLOCK");
+                closeMenu();
+            }
         }
     }
 }
@@ -1061,37 +1086,49 @@ if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
 
 if (screenSaverActive && !nightModeActive)
 {
-    // Fillimisht presim që PIR të kthehet LOW.
-    // Vetëm pas LOW PIR-i armatoset për wake.
-    if (!screenSaverPIRArmed)
-    {
-        if (pirState == LOW)
-        {
-            screenSaverPIRArmed = true;
-            Serial.println("SCREEN SAVER: PIR ARMED");
-        }
-    }
-    else if (pirState == HIGH && pirLastState == LOW)
+    const bool wokeByPIR =
+        screenSaverPIRArmed &&
+        pirState == HIGH &&
+        pirLastState == LOW;
+
+    if (screenSaverTouchWakeRequested || wokeByPIR)
     {
         unsigned long now = millis();
 
         screenSaverActive = false;
 
-        Serial.println("PIR: MOTION DETECTED");
-        Serial.println("SCREEN SAVER: WAKE");
-        if (settingGreeting)
+        if (wokeByPIR)
+            Serial.println("PIR: MOTION DETECTED");
+        Serial.println(
+            wokeByPIR
+                ? "SCREEN SAVER: WAKE (PIR)"
+                : "SCREEN SAVER: WAKE (TOUCH)"
+        );
+        if (wokeByPIR && settingGreeting)
 {
     tft.fillScreen(COLOR_BG);
 
     tft.setTextColor(TFT_CYAN, COLOR_BG);
     tft.setTextFont(4);
     tft.setTextSize(3);
-    tft.setTextDatum(MC_DATUM);
+    tft.setTextDatum(TL_DATUM);
 
     tft.drawString(
-        "MIRE SE VJEN",
-        MAIN_CONTENT_CENTER_X,
-        160
+        "MIRE",
+        24,
+        35
+    );
+
+    tft.drawString(
+        "SE",
+        190,
+        115
+    );
+
+    tft.drawString(
+        "VJEN",
+        240,
+        195
     );
 
     delay(2000);
@@ -1135,6 +1172,13 @@ if (screenSaverActive && !nightModeActive)
         pirLastState = HIGH;
 
         return;
+    }
+
+    // Arm PIR once its output is LOW after the saver starts.
+    if (!screenSaverPIRArmed && pirState == LOW)
+    {
+        screenSaverPIRArmed = true;
+        Serial.println("SCREEN SAVER: PIR ARMED");
     }
 }
 // --------------------------------------------------------
@@ -1213,6 +1257,7 @@ if (settingNightMode &&
     // SCREEN SAVER
     // --------------------------------------------------------
    if (!screenSaverActive &&
+    !nightModeActive &&
     settingScreenSaver &&
     millis() - lastMotionTime >= screenSaverDelay)
     {
@@ -1231,6 +1276,7 @@ if (nightModeActive)
         (bh1750OK && bh1750ReadingOK && bh1750Lux >= nightWakeLux))
     {
         nightModeActive = false;
+        screenSaverActive = false;
 
         Serial.println("NIGHT MODE: WAKE");
         Serial.print("Lux: ");
@@ -1295,13 +1341,20 @@ else
         if (weatherUpdatePending)
         {
             weatherUpdatePending = false;
-            if (!showingLocalSensors && !showingTuyaData && settingWeather)
+            if (!showingLocalSensors &&
+                !showingTuyaData &&
+                settingWeather &&
+                weatherServiceReady &&
+                weather.getData().valid)
                 drawWeatherDisplay(tft, weather.getData());
         }
         if (tuyaUpdatePending)
         {
             tuyaUpdatePending = false;
-            if (showingTuyaData && settingTuyaDisplay)
+            if (showingTuyaData &&
+                settingTuyaDisplay &&
+                tuyaServiceReady &&
+                tuyaService.isOnline())
                 updateTuyaDisplay();
         }
         // ----------------------------------------------------
