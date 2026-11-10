@@ -1,6 +1,10 @@
 #include <unity.h>
 #include "RuntimePolicies.h"
 
+#ifdef ARDUINO
+#include <Arduino.h>
+#endif
+
 using runtime_policies::RamProtection;
 using runtime_policies::ResetHistory;
 
@@ -85,7 +89,7 @@ void testResetHistoryRejectsInvalidPersistedState()
     TEST_ASSERT_FALSE(history.restore(entries, 0, 9));
 }
 
-int main()
+static void runRuntimePolicyTests()
 {
     UNITY_BEGIN();
     RUN_TEST(testRamProtectionUsesStrictThresholds);
@@ -94,5 +98,24 @@ int main()
     RUN_TEST(testResetHistoryKeepsOnlyNewestEntriesAfterWrapping);
     RUN_TEST(testResetHistoryCanRestorePersistedState);
     RUN_TEST(testResetHistoryRejectsInvalidPersistedState);
-    return UNITY_END();
+    UNITY_END();
 }
+
+#ifdef ARDUINO
+void setup()
+{
+    Serial.begin(115200);
+    delay(1000);
+    runRuntimePolicyTests();
+}
+
+void loop()
+{
+}
+#else
+int main()
+{
+    runRuntimePolicyTests();
+    return 0;
+}
+#endif

@@ -10,15 +10,14 @@ in the development cycle.
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
 
-Run the host-side logic tests with:
+Run the logic tests directly on the ESP32-S3 with:
 
 ```powershell
-pio test -e native
+pio test -e esp32-s3-test
 ```
 
-On Windows, install a GCC-compatible host toolchain (for example MinGW-w64)
-and ensure `gcc` and `g++` are available on `PATH`.
-
-The native suite covers the screensaver RAM-protection hysteresis and the
-persistent reset-history ring buffer. Hardware-specific behavior such as NVS
-I/O, Wi-Fi, display rendering, and sensors still requires an ESP32 test.
+The results are printed by Unity at 115200 baud. This uploads a temporary test
+firmware to the board; upload `esp32-s3-devkitc-1` again afterward to restore
+the clock application. The suite covers screensaver RAM-protection hysteresis
+and reset-history logic. Hardware-specific behavior such as NVS I/O, Wi-Fi,
+display rendering, and sensors still requires separate tests.
