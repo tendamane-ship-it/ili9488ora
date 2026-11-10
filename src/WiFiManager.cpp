@@ -1,15 +1,12 @@
 
 #include "WiFiManager.h"
 #include "SerialLog.h"
+#include "settings.h"
 #include <esp_system.h>
 
-static const char* AP_SSID = "oraPas88888888";
+static constexpr char AP_SSID[] = "ili9488ora-setup";
 
 static const byte DNS_PORT = 53;
-static const IPAddress STA_IP(192, 168, 1, 133);
-static const IPAddress STA_GATEWAY(192, 168, 1, 1);
-static const IPAddress STA_SUBNET(255, 255, 255, 0);
-static const IPAddress STA_DNS(192, 168, 1, 1);
 
 WiFiManager::WiFiManager()
     : portalServer(80),
@@ -61,17 +58,7 @@ bool WiFiManager::connectToWiFi(uint32_t timeoutMs) {
         return false;
     }
 
-    if (!WiFi.config(
-            STA_IP,
-            STA_GATEWAY,
-            STA_SUBNET,
-            STA_DNS
-        )) {
-        Serial.println("WiFi: failed to configure static IP 192.168.1.133");
-        return false;
-    }
-
-    Serial.println("Connecting to WiFi...");
+    Serial.println("Connecting to WiFi using DHCP...");
 
     WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 
@@ -163,7 +150,7 @@ void WiFiManager::handleRoot() {
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta charset="UTF-8">
-<title>ORA WiFi Setup</title>
+<title>ILI9488ORA WiFi Setup</title>
 <style>
 body {
     font-family: Arial;
@@ -198,7 +185,7 @@ button {
 </head>
 <body>
 <div class="container">
-<h1>ORA WiFi Setup</h1>
+<h1>ILI9488ORA WiFi Setup</h1>
 <p>Vendos emrin dhe fjalekalimin e rrjetit WiFi.</p>
 <form action="/save" method="POST">
 <input type="text" name="ssid" placeholder="WiFi SSID" required>
@@ -239,7 +226,7 @@ void WiFiManager::handleSave() {
         "text/html; charset=UTF-8",
         "<html><meta charset='UTF-8'><body>"
         "<h2>Te dhenat u ruajten!</h2>"
-        "<p>ORA po provon te lidhet me routerin. Prisni pak.</p>"
+        "<p>ILI9488ORA po provon te lidhet me routerin. Prisni pak.</p>"
         "</body></html>"
     );
 
@@ -249,7 +236,7 @@ void WiFiManager::handleSave() {
 
 if (connectToWiFi(20000)) {
     Serial.println("New WiFi connection successful.");
-    Serial.println("Restarting ORA...");
+    Serial.println("Restarting ILI9488ORA...");
     delay(1000);
     ESP.restart();
 } else {

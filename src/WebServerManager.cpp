@@ -6,6 +6,7 @@
 #include <Preferences.h>
 #include "TuyaService.h"
 #include "SerialLog.h"
+#include "ResetDiagnostics.h"
 
 extern Preferences preferences;
 
@@ -185,6 +186,11 @@ void WebServerManager::handleApiStatus()
     doc["flash"] = ESP.getFlashChipSize();
     doc["uptime"] = millis() / 1000;
     doc["webServer"] = true;
+    doc["resetReason"] = resetReasonName();
+    doc["resetCount"] = resetCount();
+    JsonArray resetHistory = doc["resetHistory"].to<JsonArray>();
+    for (size_t i = 0; i < resetHistoryCount(); ++i)
+        resetHistory.add(resetHistoryReason(i));
 
     doc["setting24Hour"] = setting24Hour;
     doc["settingDate"] = settingDate;

@@ -20,6 +20,11 @@ faqe lokale në rrjet për statusin dhe konfigurimet.
 - PIR, kursyesi i ekranit, modaliteti i natës dhe paneli lokal web mund të
   përdoren sipas konfigurimit të projektit.
 - Kur nuk ka kredenciale Wi-Fi të ruajtura, pajisja hap portalin e konfigurimit.
+- Wi-Fi përdor DHCP për të marrë automatikisht adresën IP nga routeri.
+- Shkaku dhe historia e tetë nisjeve të fundit ruhen në NVS dhe shfaqen te paneli
+  web; mund të kontrollohen nga telefoni në të njëjtin rrjet. Regjistrohet
+  arsyeja vetëm kur ESP32 arrin të nisë kodin pas reset-it; një dështim i
+  furnizimit që pengon nisjen nuk mund të regjistrohet nga firmware-i.
 
 ## Pajisjet dhe lidhjet
 
@@ -66,7 +71,9 @@ ruaj emrin dhe fjalëkalimin e routerit dhe ESP32 do t'i ruajë lokalisht.
   motit.
 - Tuya kërkon Client ID, Client Secret dhe Device ID në `src/secrets.h`.
 - Pas lidhjes me Wi-Fi, adresa IP e ESP32-së përdoret për të hapur panelin web
-  nga një pajisje në të njëjtin rrjet lokal.
+  nga një pajisje në të njëjtin rrjet lokal. Adresa caktohet nga routeri me
+  DHCP dhe mund të ndryshojë; kontrolloje te paneli i routerit ose në Serial
+  Monitor pas nisjes.
 
 ## Shënim për BME680
 

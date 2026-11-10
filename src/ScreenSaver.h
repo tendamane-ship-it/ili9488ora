@@ -5,6 +5,7 @@
 #include <TFT_eSPI.h>
 
 void initScreenSaver(TFT_eSPI* display);
-void updateScreenSaver(bool active);
+bool updateScreenSaver(bool active);
+bool monitorScreenSaverMemory();
 
 #endif

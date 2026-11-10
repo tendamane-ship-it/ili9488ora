@@ -444,6 +444,21 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "<span class='info-value' id='uptime'>--</span>";
     html += "</div>";
 
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Shkaku i fundit i nisjes</span>";
+    html += "<span class='info-value' id='resetReason'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Nisje të regjistruara</span>";
+    html += "<span class='info-value' id='resetCount'>--</span>";
+    html += "</div>";
+
+    html += "<div class='info-row'>";
+    html += "<span class='info-label'>Nisjet e fundit</span>";
+    html += "<span class='info-value' id='resetHistory' style='max-width:65%;word-break:break-word'>--</span>";
+    html += "</div>";
+
     html += "</div>";
 
     html += "</div>";
@@ -599,6 +614,9 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "setText('heap',d.heap==null?'--':Math.round(d.heap/1024)+' KB');";
     html += "setText('flash',d.flash==null?'--':Math.round(d.flash/1048576)+' MB');";
     html += "setText('uptime',formatUptime(d.uptime));";
+    html += "setText('resetReason',d.resetReason||'--');";
+    html += "setText('resetCount',d.resetCount==null?'--':d.resetCount);";
+    html += "setText('resetHistory',Array.isArray(d.resetHistory)&&d.resetHistory.length?d.resetHistory.join(' ← '):'--');";
 
     // Settings
     html += "setText('format',d.setting24Hour?'24 ORË':'12 ORË');";

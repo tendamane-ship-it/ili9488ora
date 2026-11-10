@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
+static constexpr char PROJECT_NAMESPACE[] = "ili9488ora";
+
 extern Preferences preferences;
 
 // General settings

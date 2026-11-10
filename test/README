@@ -9,3 +9,16 @@ in the development cycle.
 
 More information about PlatformIO Unit Testing:
 - https://docs.platformio.org/en/latest/advanced/unit-testing/index.html
+
+Run the host-side logic tests with:
+
+```powershell
+pio test -e native
+```
+
+On Windows, install a GCC-compatible host toolchain (for example MinGW-w64)
+and ensure `gcc` and `g++` are available on `PATH`.
+
+The native suite covers the screensaver RAM-protection hysteresis and the
+persistent reset-history ring buffer. Hardware-specific behavior such as NVS
+I/O, Wi-Fi, display rendering, and sensors still requires an ESP32 test.

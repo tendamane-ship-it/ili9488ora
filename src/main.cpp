@@ -19,6 +19,7 @@
 #include "ClockDisplay.h"
 #include "DisplayText.h"
 #include "WeatherDisplay.h"
+#include "ResetDiagnostics.h"
 #define TOUCH_CS   17
 #define TOUCH_IRQ  14
 
@@ -666,10 +667,27 @@ void networkServicesTask(void* parameter)
 // ============================================================
 // SETUP
 // ============================================================
+static constexpr bool SLOW_STARTUP_TEST = false;
+static constexpr unsigned long SLOW_STARTUP_TEST_DELAY_MS = 5000UL;
+
+static void waitForSlowStartupTest(const char* stage)
+{
+    if (!SLOW_STARTUP_TEST)
+        return;
+
+    Serial.printf(
+        "STARTUP TEST: waiting 5 seconds %s\n",
+        stage
+    );
+    delay(SLOW_STARTUP_TEST_DELAY_MS);
+}
+
 void setup()
 {
     Serial.begin(115200);
+    recordResetDiagnostics();
     delay(1000);
+    waitForSlowStartupTest("before initializing peripherals");
     WiFi.onEvent(WiFiEvent);
     loadSettings();
     if (settingPIR)
@@ -707,6 +725,7 @@ initScreenSaver(&tft);
 
 runStartup(&tft);
 startupStartedAt = millis();
+waitForSlowStartupTest("after display initialization");
 
 // TOUCH - kontrollo sinjalin PEN
 Serial.printf("IRQ GPIO14 = %d\n", digitalRead(TOUCH_IRQ));
@@ -778,6 +797,7 @@ else
     Serial.println("WiFi Manager: PORTAL ACTIVE");
 }
 
+waitForSlowStartupTest("before initializing sensors");
 initSensors();
 setStartupStatus(
     STARTUP_BME680,
@@ -867,11 +887,25 @@ void updateLowerPanel()
         }
     }
 }
+
+void stopScreenSaverForRamProtection()
+{
+    screenSaverActive = false;
+    screenSaverPIRArmed = false;
+    lastMotionTime = millis();
+    Serial.println("SCREEN SAVER: disabled by RAM protection");
+    closeMenu();
+}
+
 // ============================================================
 // LOOP
 // ============================================================
 void loop()
 {
+    bool screenSaverRamProtected = monitorScreenSaverMemory();
+    if (screenSaverRamProtected && screenSaverActive)
+        stopScreenSaverForRamProtection();
+
     wifiManager.handleClient();
     runBsec();
     bool screenSaverTouchWakeRequested = false;
@@ -990,7 +1024,7 @@ if (touchPressed && !touchWasPressed)
                 lastMenuTouch = millis();
                 setting24Hour = !setting24Hour;
 
-                preferences.begin("ora", false);
+                preferences.begin(PROJECT_NAMESPACE, false);
                 preferences.putBool("24hour", setting24Hour);
                 preferences.end();
 
@@ -1008,7 +1042,7 @@ if (touchPressed && !touchWasPressed)
                 lastMenuTouch = millis();
                 settingDate = !settingDate;
 
-                preferences.begin("ora", false);
+                preferences.begin(PROJECT_NAMESPACE, false);
                 preferences.putBool("date", settingDate);
                 preferences.end();
 
@@ -1253,11 +1287,15 @@ if (settingNightMode &&
 
     tft.fillScreen(TFT_BLACK);
 }
+screenSaverRamProtected = monitorScreenSaverMemory();
+if (screenSaverRamProtected && screenSaverActive)
+    stopScreenSaverForRamProtection();
     // --------------------------------------------------------
     // SCREEN SAVER
     // --------------------------------------------------------
    if (!screenSaverActive &&
     !nightModeActive &&
+    !screenSaverRamProtected &&
     settingScreenSaver &&
     millis() - lastMotionTime >= screenSaverDelay)
     {
@@ -1308,7 +1346,15 @@ if (nightModeActive)
 }
 else if (screenSaverActive)
 {
-    updateScreenSaver(true);
+    if (!updateScreenSaver(true))
+    {
+        screenSaverActive = false;
+        lastMotionTime = millis();
+        Serial.println(
+            "SCREEN SAVER: disabled because its sprite is unavailable"
+        );
+        closeMenu();
+    }
 }
 else
 {

@@ -27,7 +27,7 @@ float nightWakeLux = 20.0f;
 
 void loadSettings()
 {
-    preferences.begin("ora", false);
+    preferences.begin(PROJECT_NAMESPACE, false);
 
     setting24Hour = preferences.getBool("24hour", true);
     settingDate = preferences.getBool("date", true);
