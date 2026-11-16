@@ -43,7 +43,45 @@ faqe lokale në rrjet për statusin dhe konfigurimet.
 | PIR | GPIO 42 |
 
 Kontrollo gjithmonë pinout-in e pllakës dhe të moduleve para lidhjes. Drita e
-pasme e ekranit (BL) e këtij konfigurimi nuk kontrollohet nga kodi.
+pasme (BL) lidhet te GPIO 15.
+
+### Kontrolli i dritës së pasme
+
+Te **Cilësimet → Drita e pasme**, zgjidh kontrollin automatik me BH1750 ose
+manual dhe cakto nivelin `0`–`255`. Automatikja fik BL kur aktivizohet Night
+Mode dhe e ndez kur sensori raporton dritë të mjaftueshme. Nëse BH1750 dështon
+në modalitetin automatik, ora del nga Night Mode dhe e vendos BL në `255` si
+masë rezervë. Modaliteti manual anashkalon BH1750 dhe Night Mode; niveli manual
+mund të vendoset nga `0` deri në `255` (fillimisht `255`), ku `0` e fik BL.
+
+Kur sensori funksionon dhe Night Mode nuk e ka fikur ekranin, modaliteti
+automatik përdor këto nivele PWM:
+
+| Ndriçimi BH1750 | PWM i dritës së pasme |
+|---|---:|
+| Nën 20 lux | 32 |
+| 20–99 lux | 64 |
+| 100–299 lux | 112 |
+| 300–799 lux | 180 |
+| 800 lux e lart | 255 |
+
+Kalimi mes niveleve zbutet me rritje/ulje graduale të PWM-së. Këto janë vlera
+fillestare praktike; mund të kalibrohen sipas ekranit dhe ndriçimit të dhomës.
+
+### Testi i dritës së pasme
+
+Testi ngarkohet veçmas dhe nuk përfshin kodin e orës. Zgjidh mjedisin
+`esp32-s3-backlight-test` në PlatformIO dhe ekzekuto **Build**, pastaj **Upload**.
+Hap Serial Monitor me shpejtësi `115200` dhe dërgo komandat me rresht të ri:
+
+- `0`–`255`: cakton ndriçimin, ku `0` fikur dhe `255` maksimum.
+- `a`: nis ose ndal ciklin automatik të ndriçimit.
+- `s`: ndal ciklin dhe mban ndriçimin aktual.
+- `?`: shfaq ndihmën.
+
+Programi nis me ndriçim `128/255`. Për ndërtim nga terminali përdor
+`pio run -e esp32-s3-backlight-test`; për ngarkim shto
+`-t upload`.
 
 ## Përgatitja dhe ngarkimi
 

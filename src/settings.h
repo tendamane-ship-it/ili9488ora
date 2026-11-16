@@ -30,6 +30,9 @@ extern bool settingNightMode;
 extern float nightSleepLux;
 extern float nightWakeLux;
 
+extern bool settingBacklightAuto;
+extern uint8_t settingBacklightBrightness;
+
 
 // Load saved settings from Preferences
 void loadSettings();

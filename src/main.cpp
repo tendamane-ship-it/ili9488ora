@@ -81,6 +81,91 @@ unsigned long screenSaverDelay = 15UL * 60UL * 1000UL;
 const unsigned long HEART_INTERVAL = 1200UL;
 // Night Mode
 bool nightModeActive = false;
+constexpr uint8_t BACKLIGHT_PIN = 15;
+constexpr uint8_t BACKLIGHT_FADE_STEP = 8;
+constexpr unsigned long BACKLIGHT_FADE_INTERVAL_MS = 50;
+int lastAppliedBacklight = -1;
+uint8_t currentBacklight = 255;
+unsigned long lastBacklightFadeStep = 0;
+
+uint8_t getAutomaticBacklightTarget()
+{
+    if (!bh1750OK || !bh1750ReadingOK)
+        return 255;
+
+    if (settingNightMode && nightModeActive)
+        return 0;
+
+    // ------------------------------------------------------------
+    // NDricim automatik me histeze (ndal "flikerimin" kur Lux
+    // rrotullohet pranë një kufiri). Pasi sensori i dritës ka
+    // vlerë të rradhës, targeti i ri i ndricimit vendoset vetëm
+    // kur Luxi ka ndryshuar për një prag të caktuar (LUX_HYSTERESIS).
+    // Kështu ndricimi rregullohet paur të zbuluar ndryshimet e vërtetë
+    // të dritës, pa nxjerrje të pavlefshme të ekranit.
+    // ------------------------------------------------------------
+    static float luxAtLastTargetChange = -1.0f;
+    static uint8_t lastTarget = 255;
+    constexpr float LUX_HYSTERESIS = 12.0f; // lx
+
+    uint8_t rawTarget;
+    if (bh1750Lux < 20.0f)
+        rawTarget = 32;
+    else if (bh1750Lux < 100.0f)
+        rawTarget = 64;
+    else if (bh1750Lux < 300.0f)
+        rawTarget = 112;
+    else if (bh1750Lux < 800.0f)
+        rawTarget = 180;
+    else
+        rawTarget = 255;
+
+    float diff = bh1750Lux - luxAtLastTargetChange;
+    if (diff < 0.0f)
+        diff = -diff;
+
+    if (luxAtLastTargetChange < 0.0f || diff >= LUX_HYSTERESIS)
+    {
+        lastTarget = rawTarget;
+        luxAtLastTargetChange = bh1750Lux;
+    }
+
+    return lastTarget;
+}
+
+void updateBacklight()
+{
+    const uint8_t target = settingBacklightAuto
+        ? getAutomaticBacklightTarget()
+        : settingBacklightBrightness;
+
+    if (!settingBacklightAuto)
+    {
+        currentBacklight = target;
+    }
+    else if (millis() - lastBacklightFadeStep >= BACKLIGHT_FADE_INTERVAL_MS)
+    {
+        lastBacklightFadeStep = millis();
+        if (currentBacklight < target)
+        {
+            const uint16_t next = currentBacklight + BACKLIGHT_FADE_STEP;
+            currentBacklight = next > target ? target : static_cast<uint8_t>(next);
+        }
+        else if (currentBacklight > target)
+        {
+            const uint8_t difference = currentBacklight - target;
+            currentBacklight = difference > BACKLIGHT_FADE_STEP
+                ? currentBacklight - BACKLIGHT_FADE_STEP
+                : target;
+        }
+    }
+
+    if (currentBacklight == lastAppliedBacklight)
+        return;
+
+    analogWrite(BACKLIGHT_PIN, currentBacklight);
+    lastAppliedBacklight = currentBacklight;
+}
 
 enum ScreenMode
 {
@@ -690,6 +775,8 @@ void setup()
     waitForSlowStartupTest("before initializing peripherals");
     WiFi.onEvent(WiFiEvent);
     loadSettings();
+    pinMode(BACKLIGHT_PIN, OUTPUT);
+    updateBacklight();
     if (settingPIR)
 {
     initPIR();
@@ -930,6 +1017,7 @@ if (wifiManager.isConnected())
 {
     webServer.handleClient();
 }
+updateBacklight();
 
 if (!timeSynchronized && wifiManager.isConnected() &&
     getSyncedTime(timeinfo))
@@ -1273,7 +1361,8 @@ pirLastState = pirState;
 return;
 }
 // NIGHT MODE
-if (settingNightMode &&
+if (settingBacklightAuto &&
+    settingNightMode &&
     bh1750OK &&
     bh1750ReadingOK &&
     !nightModeActive &&
@@ -1310,7 +1399,10 @@ if (screenSaverRamProtected && screenSaverActive)
 // --------------------------------------------------------
 if (nightModeActive)
 {
-    if (!settingNightMode ||
+    if (!settingBacklightAuto ||
+        !settingNightMode ||
+        !bh1750OK ||
+        !bh1750ReadingOK ||
         (bh1750OK && bh1750ReadingOK && bh1750Lux >= nightWakeLux))
     {
         nightModeActive = false;
@@ -1415,4 +1507,5 @@ updateWeatherAnimations(
         !showingLocalSensors && !showingTuyaData
 );
     }
+    updateBacklight();
 }

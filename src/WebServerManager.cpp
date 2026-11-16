@@ -30,6 +30,8 @@ extern bool settingGreeting;
 extern bool settingNightMode;
 extern float nightSleepLux;
 extern float nightWakeLux;
+extern bool settingBacklightAuto;
+extern uint8_t settingBacklightBrightness;
 
 extern float bmeTemp;
 extern float bmeHumidity;
@@ -198,6 +200,8 @@ void WebServerManager::handleApiStatus()
     doc["settingLightSensor"] = settingLightSensor;
     doc["settingTuyaDisplay"] = settingTuyaDisplay;
     doc["settingPIR"] = settingPIR;
+    doc["backlightAuto"] = settingBacklightAuto;
+    doc["backlightBrightness"] = settingBacklightBrightness;
     doc["weatherDisplayTime"] = weatherDisplayTime / 1000;
     doc["localSensorsDisplayTime"] = localSensorsDisplayTime / 1000;
     doc["tuyaDisplayTime"] = tuyaDisplayTime / 1000;
@@ -830,6 +834,28 @@ if (server.hasArg("nightWakeLux"))
         nightWakeLux = nightSleepLux + 1.0f;
 
     preferences.putFloat("nightWakeLux", nightWakeLux);
+}
+
+if (server.hasArg("backlightAuto"))
+{
+    const String mode = server.arg("backlightAuto");
+    if (mode == "0" || mode == "1")
+    {
+        settingBacklightAuto = mode == "1";
+        preferences.putBool("backlightAuto", settingBacklightAuto);
+    }
+}
+
+if (server.hasArg("backlightBrightness"))
+{
+    long brightness = server.arg("backlightBrightness").toInt();
+    if (brightness < 0)
+        brightness = 0;
+    if (brightness > 255)
+        brightness = 255;
+
+    settingBacklightBrightness = static_cast<uint8_t>(brightness);
+    preferences.putUChar("backlightLevel", settingBacklightBrightness);
 }
     server.sendHeader("Location", "/settings");
     server.send(303);

@@ -13,6 +13,8 @@ extern bool settingGreeting;
 extern bool settingNightMode;
 extern float nightSleepLux;
 extern float nightWakeLux;
+extern bool settingBacklightAuto;
+extern uint8_t settingBacklightBrightness;
 
 extern unsigned long localSensorsDisplayTime;
 extern unsigned long weatherDisplayTime;
@@ -1289,6 +1291,41 @@ html += "</div>";
 
 html += "</div>";
 
+// Backlight control
+html += "<div class='card'>";
+html += "<h2>Drita e pasme</h2>";
+
+html += "<div class='setting'>";
+html += "<div>";
+html += "<div class='label'>Kontrolli i ndriçimit</div>";
+html += "<div class='description'>Automatik: &lt;20 lux = 32; 20–99 = 64; 100–299 = 112; 300–799 = 180; ≥800 = 255. Night Mode mund ta fikë ekranin; kalimet zbuten.</div>";
+html += "</div>";
+html += "<div class='control'><select id='backlightAuto' name='backlightAuto' onchange='updateBacklightInput()'>";
+html += settingBacklightAuto
+    ? "<option value='1' selected>AUTOMATIK</option>"
+    : "<option value='1'>AUTOMATIK</option>";
+html += settingBacklightAuto
+    ? "<option value='0'>MANUAL</option>"
+    : "<option value='0' selected>MANUAL</option>";
+html += "</select></div>";
+html += "</div>";
+
+html += "<div class='setting'>";
+html += "<div>";
+html += "<div class='label'>Niveli manual</div>";
+html += "<div class='description'>Përdoret në modalitetin manual; nëse BH1750 dështon në automatik, ndriçimi kalon në 255.</div>";
+html += "</div>";
+html += "<div class='control'>";
+html += "<input id='backlightBrightness' type='number' name='backlightBrightness' min='0' max='255' ";
+if (settingBacklightAuto)
+    html += "disabled ";
+html += "value='";
+html += String(settingBacklightBrightness);
+html += "'>";
+html += "<span class='badge'>0–255</span>";
+html += "</div>";
+html += "</div>";
+html += "</div>";
 
 // --------------------------------------------------------
 // NIGHT MODE
@@ -1391,6 +1428,12 @@ html += "</form>";
     html += "</div>";
 
 html += "<script>";
+
+html += "function updateBacklightInput(){";
+html += "document.getElementById('backlightBrightness').disabled=";
+html += "document.getElementById('backlightAuto').value!=='0';";
+html += "}";
+html += "updateBacklightInput();";
 
 html += "function restartESP(){";
 html += "if(!confirm('Dëshironi ta rinisni ESP32-n?')) return;";

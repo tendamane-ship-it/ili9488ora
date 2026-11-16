@@ -24,6 +24,8 @@ unsigned long screenSaverMinutes = 15UL;
 bool settingNightMode = false;
 float nightSleepLux = 5.0f;
 float nightWakeLux = 20.0f;
+bool settingBacklightAuto = true;
+uint8_t settingBacklightBrightness = 255;
 
 void loadSettings()
 {
@@ -67,6 +69,11 @@ void loadSettings()
 
     nightWakeLux =
         preferences.getFloat("nightWakeLux", 20.0f);
+
+    settingBacklightAuto =
+        preferences.getBool("backlightAuto", true);
+    settingBacklightBrightness =
+        static_cast<uint8_t>(preferences.getUChar("backlightLevel", 255));
 
     if (nightSleepLux < 0.0f)
         nightSleepLux = 0.0f;
