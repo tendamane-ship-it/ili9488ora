@@ -1,0 +1,29 @@
+name: PlatformIO Build
+
+on:
+  push:
+    branches:
+      - docs/shqip-komentet
+  pull_request:
+    branches:
+      - docs/shqip-komentet
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ESP32-S3 ORA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Shkarko kodin
+        uses: actions/checkout@v4
+
+      - name: Konfiguro Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Instalo PlatformIO
+        run: python -m pip install --upgrade platformio
+
+      - name: Kompilo projektin
+        run: pio run -e esp32-s3-devkitc-1
