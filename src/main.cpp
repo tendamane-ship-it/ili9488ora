@@ -97,12 +97,10 @@ uint8_t getAutomaticBacklightTarget()
         return 0;
 
     // ------------------------------------------------------------
-    // Ndriçimi automatik me histerezë shmang luhatjet e shpeshta kur niveli i ndriçimit matet pranë një kufiri.
-    // rrotullohet pranë një kufiri). Pasi sensori i dritës ka
-    // vlerë të rradhës, targeti i ri i ndricimit vendoset vetëm
-    // kur Luxi ka ndryshuar për një prag të caktuar (LUX_HYSTERESIS).
-    // Kështu ndricimi rregullohet paur të zbuluar ndryshimet e vërtetë
-    // të dritës, pa nxjerrje të pavlefshme të ekranit.
+    // Rregullimi automatik i ndriçimit përdor histerezë për të shmangur
+    // ndryshimet e shpeshta të nivelit kur matja luhatet pranë kufirit
+    // ndërmjet dy niveleve. Vlera e synuar ndryshon vetëm pasi ndryshimi
+    // i matur të arrijë pragun e përcaktuar nga LUX_HYSTERESIS.
     // ------------------------------------------------------------
     static float luxAtLastTargetChange = -1.0f;
     static uint8_t lastTarget = 255;
