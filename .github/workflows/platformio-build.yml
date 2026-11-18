@@ -53,7 +53,7 @@ jobs:
               '#define TUYA_API_HOST "openapi.tuyaeu.com"',
               "",
           ]
-          Path("src/secrets.h").write_text("\\n".join(lines), encoding="utf-8")
+          Path("src/secrets.h").write_text("\n".join(lines), encoding="utf-8")
           PY
 
       - name: Kompilo projektin
