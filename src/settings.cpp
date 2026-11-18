@@ -1,9 +1,9 @@
 #include "settings.h"
 
-// Preferences
+// Preferencat
 Preferences preferences;
 
-// General settings
+// Cilësimet e përgjithshme
 bool setting24Hour = true;
 bool settingDate = true;
 bool settingWeather = true;
@@ -12,15 +12,15 @@ bool settingTuyaDisplay = true;
 bool settingPIR = true;
 bool settingGreeting = true;
 
-// Display timing settings
+// Intervalet e përditësimit të ekranit
 unsigned long localSensorsDisplayTime = 10000UL;
 unsigned long weatherDisplayTime = 10000UL;
 unsigned long tuyaDisplayTime = 10000UL;
 
-// Screensaver settings
+// Cilësimet e ruajtësit të ekranit
 bool settingScreenSaver = true;
 unsigned long screenSaverMinutes = 15UL;
-// Night Mode settings
+// Cilësimet e modalitetit të natës
 bool settingNightMode = false;
 float nightSleepLux = 5.0f;
 float nightWakeLux = 20.0f;
@@ -55,7 +55,7 @@ void loadSettings()
         settingGreeting =
     preferences.getBool("greeting", true);
 
-    // Keep screensaver delay within allowed range
+    // Mbaje kohën e pritjes së ruajtësit të ekranit brenda kufijve të lejuar.
     if (screenSaverMinutes < 1UL)
         screenSaverMinutes = 1UL;
 

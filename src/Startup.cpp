@@ -1,7 +1,7 @@
 #include "Startup.h"
 
 // ============================================================
-// COLORS
+// NGJYRAT
 // ============================================================
 
 #define STARTUP_BG      TFT_BLACK
@@ -40,7 +40,7 @@ static const char* statusText(StartupStatus status)
 }
 
 // ============================================================
-// CENTERED TEXT
+// TEKSTI I QENDËRZUAR
 // ============================================================
 
 void drawCentered(
@@ -66,10 +66,10 @@ void drawCentered(
 }
 
 // ============================================================
-// BOOT LINE
+// RRESHTI I NISJES
 // ============================================================
 
-// STARTUP FILM
+// ANIMACIONI I NISJES
 // ============================================================
 
 void runStartup(TFT_eSPI* tft)

@@ -90,7 +90,7 @@ static void drawHeartOutline(
 
 
 // ============================================================
-// INITIALIZE SCREEN SAVER
+// FILLIMI I RUAJTËSIT TË EKRANIT
 // ============================================================
 
 void initScreenSaver(TFT_eSPI* display)
@@ -134,7 +134,7 @@ bool monitorScreenSaverMemory()
 
 
 // ============================================================
-// UPDATE SCREEN SAVER
+// PËRDITËSIMI I RUAJTËSIT TË EKRANIT
 // ============================================================
 
 bool updateScreenSaver(bool active)
@@ -145,7 +145,7 @@ bool updateScreenSaver(bool active)
 
 
     // --------------------------------------------------------
-    // INITIALIZE SPRITE
+    // PËRGATITJA E SPRITE-IT
     // --------------------------------------------------------
 
     if (!heartSpriteReady)
@@ -201,12 +201,12 @@ bool updateScreenSaver(bool active)
 
 
     // --------------------------------------------------------
-    // SCREEN SAVER FRAME RATE
-    // ~12.5 FPS
+    // SHPEJTËSIA E KUADRAVE TË RUAJTËSIT TË EKRANIT
+    // RRETH 12,5 KUADRA NË SEKONDË
     //
-    // 80 ms between frames.
-    // This reduces SPI traffic and leaves more time
-    // for the WebServer.
+    // 80 ms ndërmjet kuadrove.
+    // Kjo ul trafikun në SPI dhe i lë më shumë kohë
+    // serverit të uebit.
     // --------------------------------------------------------
 
     if (millis() - lastHeartFrame < 80)
@@ -216,7 +216,7 @@ bool updateScreenSaver(bool active)
 
 
     // --------------------------------------------------------
-    // HEARTBEAT
+    // PULSI I SISTEMIT
     // --------------------------------------------------------
 
     heartPhase += 0.60;
@@ -260,7 +260,7 @@ bool updateScreenSaver(bool active)
 
 
     // --------------------------------------------------------
-    // PUSH SPRITE TO TFT
+    // SHFAQJA E SPRITE-IT NË EKRANIN TFT
     // --------------------------------------------------------
 
     heartSprite->pushSprite(

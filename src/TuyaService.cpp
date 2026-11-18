@@ -9,7 +9,7 @@
 #include "SerialLog.h"
 
 // ============================================================
-// TUYA SIGNATURE HELPERS
+// FUNKSIONET NDIHMËSE PËR NËNSHKRIMIN TUYA
 // ============================================================
 
 String sha256Hex(const String& data)
@@ -98,7 +98,7 @@ String hmacSha256Hex(
 }
 
 // ============================================================
-// CONSTRUCTOR
+// KONSTRUKTORI
 // ============================================================
 
 TuyaService::TuyaService()
@@ -112,7 +112,7 @@ TuyaService::TuyaService()
 }
 
 // ============================================================
-// BEGIN
+// FILLIMI
 // ============================================================
 
 bool TuyaService::begin()
@@ -132,7 +132,7 @@ bool TuyaService::begin()
 }
 
 // ============================================================
-// GET ACCESS TOKEN
+// MARRJA E TOKEN-IT TË AKSESIT
 // ============================================================
 
 String TuyaService::getAccessToken()
@@ -148,7 +148,7 @@ String TuyaService::getAccessToken()
         tokenPath;
 
     // --------------------------------------------------------
-    // Timestamp
+    // VULA KOHORE
     // --------------------------------------------------------
 
     uint64_t timestampValue =
@@ -158,14 +158,14 @@ String TuyaService::getAccessToken()
         String(timestampValue);
 
     // --------------------------------------------------------
-    // SHA256 of empty GET body
+    // SHA256 I TRUPIT BOSH TË KËRKESËS GET
     // --------------------------------------------------------
 
     const String contentSha256 =
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     // --------------------------------------------------------
-    // Tuya stringToSign
+    // TEKSTI PËR NËNSHKRIMIN TUYA
     // --------------------------------------------------------
 
     String stringToSign =
@@ -175,8 +175,8 @@ String TuyaService::getAccessToken()
         tokenPath;
 
     // --------------------------------------------------------
-    // Signature
-    // client_id + timestamp + stringToSign
+    // NËNSHKRIMI
+    // client_id + vula kohore + teksti për nënshkrim
     // --------------------------------------------------------
 
     String signMessage =
@@ -264,7 +264,7 @@ String TuyaService::getAccessToken()
 }
 
 // ============================================================
-// UPDATE DEVICE
+// PËRDITËSIMI I PAJISJES
 // ============================================================
 
 bool TuyaService::update()
@@ -276,7 +276,7 @@ bool TuyaService::update()
     }
 
     // --------------------------------------------------------
-    // Get access token
+    // Merr token-in e aksesit
     // --------------------------------------------------------
 
     String accessToken =
@@ -293,7 +293,7 @@ bool TuyaService::update()
     }
 
     // --------------------------------------------------------
-    // Device status endpoint
+    // Pika fundore për gjendjen e pajisjes
     // --------------------------------------------------------
 
     String statusPath =
@@ -307,7 +307,7 @@ bool TuyaService::update()
         statusPath;
 
     // --------------------------------------------------------
-    // Timestamp
+    // VULA KOHORE
     // --------------------------------------------------------
 
     uint64_t timestampValue =
@@ -317,14 +317,14 @@ bool TuyaService::update()
         String(timestampValue);
 
     // --------------------------------------------------------
-    // SHA256 of empty GET body
+    // SHA256 I TRUPIT BOSH TË KËRKESËS GET
     // --------------------------------------------------------
 
     const String contentSha256 =
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
     // --------------------------------------------------------
-    // Tuya stringToSign
+    // TEKSTI PËR NËNSHKRIMIN TUYA
     // --------------------------------------------------------
 
     String stringToSign =
@@ -334,8 +334,8 @@ bool TuyaService::update()
         statusPath;
 
     // --------------------------------------------------------
-    // Signature
-    // client_id + access_token + timestamp + stringToSign
+    // NËNSHKRIMI
+    // client_id + token-i i aksesit + vula kohore + teksti për nënshkrim
     // --------------------------------------------------------
 
     String signMessage =
@@ -439,7 +439,7 @@ bool TuyaService::update()
     }
 
     // --------------------------------------------------------
-    // Device status
+    // Gjendja e pajisjes
     // --------------------------------------------------------
 
     xSemaphoreTake(dataMutex, portMAX_DELAY);
@@ -561,7 +561,7 @@ for (JsonObject item : result)
 }
 
 // ============================================================
-// GETTERS
+// FUNKSIONET PËR MARRJEN E TË DHËNAVE
 // ============================================================
 
 float TuyaService::getTemperature()

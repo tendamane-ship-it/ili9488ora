@@ -31,7 +31,7 @@ XPT2046_Touchscreen touch(TOUCH_CS, TOUCH_IRQ);
 WiFiManager wifiManager;
 const char* NTP_SERVER = "pool.ntp.org";
 // ============================================================
-// TFT
+// EKRANI TFT
 // ============================================================
 TFT_eSPI tft = TFT_eSPI();
 struct tm timeinfo;
@@ -66,7 +66,7 @@ bool getSyncedTime(struct tm& result)
 }
 
 // ============================================================
-// COLORS
+// NGJYRAT
 // ============================================================
 #define COLOR_BG    TFT_BLACK
 #define COLOR_TIME  TFT_CYAN
@@ -97,7 +97,7 @@ uint8_t getAutomaticBacklightTarget()
         return 0;
 
     // ------------------------------------------------------------
-    // NDricim automatik me histeze (ndal "flikerimin" kur Lux
+    // Ndriçimi automatik me histerezë shmang luhatjet e shpeshta kur niveli i ndriçimit matet pranë një kufiri.
     // rrotullohet pranë një kufiri). Pasi sensori i dritës ka
     // vlerë të rradhës, targeti i ri i ndricimit vendoset vetëm
     // kur Luxi ka ndryshuar për një prag të caktuar (LUX_HYSTERESIS).
@@ -184,7 +184,7 @@ const unsigned long MENU_TIMEOUT = 30000UL;
 
 const int MAIN_CONTENT_CENTER_X = 277;
 // ============================================================
-// NETWORK INDICATORS
+// TREGUESIT E RRJETIT
 // ============================================================
 bool lastWiFiState = false;
 bool lastNtpState = false;
@@ -313,12 +313,12 @@ void updateNetworkIndicators(bool force = false)
 }
 
 // ============================================================
-// WEATHER AREA
+// ZONA E MOTIT
 // ============================================================
 #define WEATHER_Y 245
 #define WEATHER_UPDATE_INTERVAL 300000UL
 // ============================================================
-// LOWER PANEL SLIDE
+// RRËSHQITJA E PANELIT TË POSHTËM
 // ============================================================
 #define LOWER_PANEL_INTERVAL 10000UL
 bool showingLocalSensors = false;
@@ -327,7 +327,7 @@ bool lowerPanelHasContent = false;
 unsigned long lastLowerPanelChange = 0;
 unsigned long lastWeatherUpdate = 0;
 // ============================================================
-// MENU ICON
+// IKONA E MENYSË
 // ============================================================
 void drawMenuIcon()
 {
@@ -361,7 +361,7 @@ void drawMainMenu()
     tft.setTextSize(1);
     tft.drawString("MENU", 240, 25);
 
-    // IP address
+    // Adresa IP
     String ip = WiFi.localIP().toString();
 
     tft.setTextColor(TFT_WHITE, COLOR_BG);
@@ -372,7 +372,7 @@ void drawMainMenu()
         60
     );
 
-    // 12H / 24H
+    // FORMATI 12/24-ORËSH
     tft.drawRect(80, 95, 320, 45, TFT_WHITE);
 
     tft.setTextColor(TFT_CYAN, COLOR_BG);
@@ -383,7 +383,7 @@ void drawMainMenu()
     else
         tft.drawString("12H", 240, 117);
 
-    // DATA ON / OFF
+    // DATA AKTIVE / JOAKTIVE
     tft.drawRect(80, 150, 320, 45, TFT_WHITE);
 
     if (settingDate)
@@ -397,7 +397,7 @@ void drawMainMenu()
         172
     );
 
-    // ABOUT
+    // RRETH PROGRAMIT
     tft.drawRect(80, 205, 320, 45, TFT_WHITE);
 
     tft.setTextColor(TFT_WHITE, COLOR_BG);
@@ -485,7 +485,7 @@ void closeMenu()
     updateNetworkIndicators(true);
 }
 // ============================================================
-// LOCAL SENSORS DISPLAY
+// SHFAQJA E SENSORËVE LOKALË
 // ============================================================
 void updateLocalSensorsDisplay()
 {
@@ -508,10 +508,10 @@ void updateLocalSensorsDisplay()
     );
     tft.setTextDatum(TL_DATUM);
 
-    // Madhesia e te dhenave
+    // Madhësia e të dhënave
     tft.setTextFont(4);
 
-    // Temperature
+    // Temperatura
     tft.setTextColor(TFT_ORANGE, COLOR_BG);
     tft.setCursor(85, WEATHER_Y + 25);
 
@@ -530,7 +530,7 @@ void updateLocalSensorsDisplay()
         tft.print("TEMP: --.- °C");
     }
 
-    // Humidity
+    // Lagështia
     tft.setTextColor(TFT_CYAN, COLOR_BG);
     tft.setCursor(285, WEATHER_Y + 25);
 
@@ -549,7 +549,7 @@ void updateLocalSensorsDisplay()
         tft.print("Lag: -- %");
     }
 
-    // Lux
+    // Ndriçimi
     tft.setTextColor(TFT_YELLOW, COLOR_BG);
     tft.setCursor(85, WEATHER_Y + 52);
 
@@ -567,7 +567,7 @@ void updateLocalSensorsDisplay()
         tft.print("LUX: ----");
     }
 
-    // Cilesia e ajrit
+    // Cilësia e ajrit
     tft.setTextColor(TFT_GREEN, COLOR_BG);
     tft.setTextFont(1);
     tft.setCursor(285, WEATHER_Y + 49);
@@ -750,7 +750,7 @@ void networkServicesTask(void* parameter)
 }
 
 // ============================================================
-// SETUP
+// KONFIGURIMI
 // ============================================================
 static constexpr bool SLOW_STARTUP_TEST = false;
 static constexpr unsigned long SLOW_STARTUP_TEST_DELAY_MS = 5000UL;
@@ -788,7 +788,7 @@ else
 }
 screenSaverDelay = screenSaverMinutes * 60UL * 1000UL;
 // --------------------------------------------------------
-// SENSORS
+// SENSORËT
 // --------------------------------------------------------
 
 Serial.println("========================");
@@ -797,7 +797,7 @@ Serial.println("========================");
     Serial.println("ILI9488 CLOCK");
     Serial.println("==============================");
     // --------------------------------------------------------
-    // TFT
+    // EKRANI TFT
     // --------------------------------------------------------
 tft.init();
 tft.setRotation(1);
@@ -814,7 +814,7 @@ runStartup(&tft);
 startupStartedAt = millis();
 waitForSlowStartupTest("after display initialization");
 
-// TOUCH - kontrollo sinjalin PEN
+// PREKJA – kontrollo sinjalin PEN
 Serial.printf("IRQ GPIO14 = %d\n", digitalRead(TOUCH_IRQ));
 if (touch.touched())
 {
@@ -836,7 +836,7 @@ else
     }
 }
 // --------------------------------------------------------
-// WIFI MANAGER
+// MENAXHIMI I WIFI-T
 // --------------------------------------------------------
 
 Serial.println("Starting WiFi Manager...");
@@ -914,7 +914,7 @@ lastLowerPanelChange = millis();
     }
 }
 // ============================================================
-// LOWER PANEL UPDATE
+// PËRDITËSIMI I PANELIT TË POSHTËM
 // ============================================================
 void updateLowerPanel()
 {
@@ -985,7 +985,7 @@ void stopScreenSaverForRamProtection()
 }
 
 // ============================================================
-// LOOP
+// CIKLI KRYESOR
 // ============================================================
 void loop()
 {
@@ -1069,7 +1069,7 @@ if (startupActive)
 }
 
  // --------------------------------------------------------
- // TOUCH - HAP MENU DHE ABOUT
+ // PREKJA – HAP MENYNË DHE FAQEN RRETH PROGRAMIT
  // --------------------------------------------------------
 static bool touchWasPressed = false;
 static unsigned long lastMenuTouch = 0;
@@ -1178,13 +1178,13 @@ if (touchPressed && !touchWasPressed)
 
 touchWasPressed = touchPressed;
 // --------------------------------------------------------
-// FUNDI TOUCH
+// FUNDI I TRAJTIMIT TË PREKJES
 // --------------------------------------------------------
 if (screenMode == SCREEN_ICON_PREVIEW)
     return;
 
 // --------------------------------------------------------
-// PIR / MOTION
+// PIR / LËVIZJA
 // --------------------------------------------------------
 if (settingPIR)
 {
@@ -1195,7 +1195,7 @@ else
     pirState = LOW;
 }
 // --------------------------------------------------------
-// SENSOR READ
+// LEXIMI I SENSORËVE
 // --------------------------------------------------------
 if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
 {
@@ -1203,7 +1203,7 @@ if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
     updateLocalSensors();
 }
 // --------------------------------------------------------
-// SCREEN SAVER WAKE
+// RIZGJIMI NGA RUAJTËSI I EKRANIT
 // --------------------------------------------------------
 
 if (screenSaverActive && !nightModeActive)
@@ -1261,13 +1261,13 @@ if (screenSaverActive && !nightModeActive)
     tft.fillScreen(COLOR_BG);
 }
 
-        // Injoro PIR per 2 sekonda pas wake
+        // Injoro sinjalin e PIR-it për 2 sekonda pas zgjimit
         pirIgnoreUntil = millis() + 1000;
 
         // Pastro ekranin
         tft.fillScreen(COLOR_BG);
 
-        // Detyro ridizenjimin e shifrave
+        // Detyro rivizatimin e shifrave
         resetClockDisplay();
 
         if (getSyncedTime(timeinfo))
@@ -1283,20 +1283,20 @@ if (screenSaverActive && !nightModeActive)
             drawClockColon(tft, visible);
         }
 
-        // Rifresko elementet e ekranit
+        // Përditëso elementet e ekranit
         updateLowerPanel();
         drawMenuIcon();
         updateNetworkIndicators(true);
 
         lastMotionTime = now;
 
-        // Ruaj gjendjen aktuale te PIR
+        // Ruaj gjendjen aktuale të PIR-it
         pirLastState = HIGH;
 
         return;
     }
 
-    // Arm PIR once its output is LOW after the saver starts.
+    // Aktivizo sensorin PIR pasi dalja e tij të kalojë në nivelin LOW pas nisjes së ruajtësit të ekranit.
     if (!screenSaverPIRArmed && pirState == LOW)
     {
         screenSaverPIRArmed = true;
@@ -1304,7 +1304,7 @@ if (screenSaverActive && !nightModeActive)
     }
 }
 // --------------------------------------------------------
-// NORMAL PIR MOTION
+// ZBULIMI NORMAL I LËVIZJES NGA PIR-I
 // --------------------------------------------------------
 if (!screenSaverActive &&
     pirState == HIGH &&
@@ -1323,7 +1323,7 @@ if (!screenSaverActive &&
 }
 // Ruaj gjendjen aktuale
 pirLastState = pirState;
-    // MENU / ABOUT SCREEN
+    // EKRANI I MENYSË / RRETH PROGRAMIT
     if (screenMode == SCREEN_ABOUT)
     {
         if (millis() - aboutStartTime >= ABOUT_TIMEOUT)
@@ -1360,7 +1360,7 @@ pirLastState = pirState;
     }
 return;
 }
-// NIGHT MODE
+// MODALITETI I NATËS
 if (settingBacklightAuto &&
     settingNightMode &&
     bh1750OK &&
@@ -1380,7 +1380,7 @@ screenSaverRamProtected = monitorScreenSaverMemory();
 if (screenSaverRamProtected && screenSaverActive)
     stopScreenSaverForRamProtection();
     // --------------------------------------------------------
-    // SCREEN SAVER
+    // RUAJTËSI I EKRANIT
     // --------------------------------------------------------
    if (!screenSaverActive &&
     !nightModeActive &&
@@ -1395,7 +1395,7 @@ if (screenSaverRamProtected && screenSaverActive)
         tft.fillScreen(COLOR_BG);
     }
     // --------------------------------------------------------
-// NIGHT MODE ACTIVE
+// MODALITETI I NATËS AKTIV
 // --------------------------------------------------------
 if (nightModeActive)
 {
@@ -1451,7 +1451,7 @@ else if (screenSaverActive)
 else
 {
         // ----------------------------------------------------
-        // CLOCK
+        // ORA
         // ----------------------------------------------------
         if (getSyncedTime(timeinfo))
         {
@@ -1470,11 +1470,11 @@ else
             }
         }
         // ----------------------------------------------------
-        // WIFI   INDICATOR
+        // TREGUESI I WIFI-T
         // ----------------------------------------------------
         updateNetworkIndicators();
         // ----------------------------------------------------
-        // WEATHER
+        // MOTI
         // --------------------------------------------------------
         if (weatherUpdatePending)
         {
@@ -1496,7 +1496,7 @@ else
                 updateTuyaDisplay();
         }
         // ----------------------------------------------------
-        // LOWER PANEL
+        // PANELI I POSHTËM
         // ----------------------------------------------------
         updateLowerPanel();
        // ----------------------------------------------------

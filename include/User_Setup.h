@@ -1,19 +1,19 @@
 // ============================================
-// TFT_eSPI - ILI9488 configuration
+// Konfigurimi i TFT_eSPI – ILI9488
 // ESP32-S3 DevKitC-1
 // ============================================
 
 #define ILI9488_DRIVER
 
 // --------------------------------------------
-// Display resolution
+// Rezolucioni i ekranit
 // --------------------------------------------
 
 #define TFT_WIDTH  320
 #define TFT_HEIGHT 480
 
 // --------------------------------------------
-// SPI pins
+// Kunjat e SPI-së
 // --------------------------------------------
 
 #define TFT_MOSI 7
@@ -21,7 +21,7 @@
 #define TFT_SCLK 4
 
 // --------------------------------------------
-// TFT control pins
+// Kunjat e kontrollit të TFT-së
 // --------------------------------------------
 
 #define TFT_CS   6
@@ -31,13 +31,13 @@
 #define USE_FSPI_PORT
 
 // --------------------------------------------
-// SPI speed
+// Shpejtësia e SPI-së
 // --------------------------------------------
 
 #define SPI_FREQUENCY 27000000
 
 // --------------------------------------------
-// XPT2046 Touch
+// Prekja XPT2046
 // --------------------------------------------
 
 #define TOUCH_CS 17
@@ -45,7 +45,7 @@
 #define SPI_TOUCH_FREQUENCY 2500000
 
 // --------------------------------------------
-// Fonts
+// Shkrimet
 // --------------------------------------------
 
 #define LOAD_GLCD

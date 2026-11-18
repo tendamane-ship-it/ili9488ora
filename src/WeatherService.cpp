@@ -12,7 +12,7 @@ WeatherService::WeatherService()
 {
     configASSERT(dataMutex != nullptr);
 
-    // Current weather
+    // Moti aktual
     data.temperature = 0;
     data.humidity = 0;
     data.pressure = 0;
@@ -28,7 +28,7 @@ WeatherService::WeatherService()
     data.isDay = false;
     data.valid = false;
 
-    // Daily forecast
+    // Parashikimi ditor
     for (int i = 0; i < FORECAST_DAYS; i++)
     {
         daily[i].date = "";
@@ -113,7 +113,7 @@ bool WeatherService::update()
     }
 
     // --------------------------------------------------------
-    // CURRENT WEATHER
+    // MOTI AKTUAL
     // --------------------------------------------------------
 
     JsonObject current = doc["current"];
@@ -166,7 +166,7 @@ bool WeatherService::update()
     updatedData.valid = true;
 
     // --------------------------------------------------------
-    // DAILY FORECAST
+    // PARASHIKIMI DITOR
     // --------------------------------------------------------
 
     JsonObject dailyData = doc["daily"];
@@ -241,7 +241,7 @@ bool WeatherService::update()
     xSemaphoreGive(dataMutex);
 
     // --------------------------------------------------------
-    // SERIAL OUTPUT
+    // DALJA NË PORTËN SERIALE
     // --------------------------------------------------------
 
     Serial.println("Weather OK");

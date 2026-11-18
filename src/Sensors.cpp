@@ -3,7 +3,7 @@
 #include "settings.h"
 
 // ------------------------------------------------------------
-// SENSOR OBJECTS
+// OBJEKTET E SENSORËVE
 // ------------------------------------------------------------
 
 static Bsec2 bsec;
@@ -22,7 +22,7 @@ bool bh1750ReadingOK = false;
 unsigned long lastLuxReading = 0;
 
 // ------------------------------------------------------------
-// SENSOR VALUES
+// VLERAT E SENSORËVE
 // ------------------------------------------------------------
 
 float bmeTemp = 0.0;
@@ -32,7 +32,7 @@ float bmeGas = 0.0;
 float bh1750Lux = 0.0;
 
 // ------------------------------------------------------------
-// AIR QUALITY
+// CILËSIA E AJRIT
 // ------------------------------------------------------------
 
 float bmeIaq = 0.0f;
@@ -164,7 +164,7 @@ static void bsecDataCallback(
 }
 
 // ------------------------------------------------------------
-// SENSOR TIMING
+// INTERVALET E LEXIMIT TË SENSORËVE
 // ------------------------------------------------------------
 
 unsigned long lastSensorRead = 0;
@@ -172,7 +172,7 @@ unsigned long lastSensorRead = 0;
 const unsigned long SENSOR_READ_INTERVAL = 5000;
 
 // ------------------------------------------------------------
-// INITIALIZE SENSORS
+// NISJA E SENSORËVE
 // ------------------------------------------------------------
 
 void initSensors()
@@ -184,7 +184,7 @@ void initSensors()
     Wire.begin(8, 9);
 
     // --------------------------------------------------------
-    // BME680 and BSEC2
+    // BME680 dhe BSEC2
     // --------------------------------------------------------
 
     bsec.allocateMemory(bsecMemory);
@@ -291,7 +291,7 @@ void initSensors()
 }
 
 // ------------------------------------------------------------
-// UPDATE LOCAL SENSORS
+// PËRDITËSIMI I SENSORËVE LOKALË
 // ------------------------------------------------------------
 
 void updateLocalSensors()
@@ -307,7 +307,7 @@ void updateLocalSensors()
 }
 
 // ------------------------------------------------------------
-// BSEC2 PROCESSING
+// PËRPUNIMI NGA BSEC2
 // ------------------------------------------------------------
 
 void runBsec()
@@ -402,7 +402,7 @@ unsigned long pirStateChangeTime = 0;
 const unsigned long PIR_DEBOUNCE_TIME = 150;
 
 // ------------------------------------------------------------
-// INITIALIZE PIR
+// NISJA E SENSORIT PIR
 // ------------------------------------------------------------
 
 void initPIR()
@@ -413,7 +413,7 @@ void initPIR()
 }
 
 // ------------------------------------------------------------
-// READ PIR
+// LEXIMI I SENSORIT PIR
 // ------------------------------------------------------------
 
 int readPIR()

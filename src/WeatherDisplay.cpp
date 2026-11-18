@@ -18,7 +18,7 @@ int cloudFrame = 0;
 }
 
 // ============================================================
-// WEATHER DISPLAY
+// SHFAQJA E MOTIT
 // ============================================================
 static void drawCloud(
     TFT_eSPI& display,
@@ -97,7 +97,7 @@ static void drawSnowflake(TFT_eSPI& display, int cx, int cy)
 }
 
 // ============================================================
-// WEATHER ICON
+// IKONA E MOTIT
 // ============================================================
 
 static void drawWeatherIcon(
@@ -132,7 +132,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // FOG
+    // MJEGULLA
     // =========================
     else if (code >= 45 && code <= 48)
     {
@@ -157,7 +157,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // RAIN
+    // SHI
     // =========================
     else if (code >= 51 && code <= 67)
     {
@@ -170,7 +170,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // SNOW
+    // BORË
     // =========================
     else if (code >= 71 && code <= 77)
     {
@@ -181,7 +181,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // SHOWERS
+    // RESHJE SHIU
     // =========================
     else if (code >= 80 && code <= 82)
     {
@@ -211,7 +211,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // SNOW SHOWERS
+    // RESHJE BORE
     // =========================
     else if (code >= 85 && code <= 86)
     {
@@ -227,7 +227,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // THUNDERSTORM
+    // STUHI ME SHI DHE BUBULLIMA
     // =========================
     else if (code >= 95 && code <= 99)
     {
@@ -250,7 +250,7 @@ static void drawWeatherIcon(
     }
 
     // =========================
-    // UNKNOWN
+    // I PANJOHUR
     // =========================
     else
     {
@@ -314,7 +314,7 @@ void drawWeatherIconGallery(TFT_eSPI& display)
 }
 
 // ============================================================
-// WEATHER DATA DISPLAY
+// SHFAQJA E TË DHËNAVE TË MOTIT
 // ============================================================
 static void animateRainDrops(TFT_eSPI& display, const WeatherData& data)
 {
@@ -519,7 +519,7 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     if (!data.valid)
         return;
 
-    // Clear weather data area
+    // Pastro zonën e të dhënave të motit
     display.fillRect(
         75,
         WEATHER_Y,
@@ -545,7 +545,7 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     drawAlbanianText(display, title, titleTextSize);
     display.setTextSize(1);
 
-    // Weather icon
+    // Ikona e motit
     drawWeatherIcon(display, data, 40, WEATHER_Y + 37);
 
     display.setTextColor(
@@ -556,7 +556,7 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     display.setTextFont(4);
 
     // --------------------------------------------------------
-    // TEMPERATURE
+    // TEMPERATURA
     // --------------------------------------------------------
 
     char tempText[20];
@@ -581,7 +581,7 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     display.print(tempText);
 
     // --------------------------------------------------------
-    // HUMIDITY
+    // LAGËSHTIA
     // --------------------------------------------------------
 
     char humidityText[20];
@@ -606,7 +606,7 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     display.print(humidityText);
 
     // --------------------------------------------------------
-    // WIND
+    // ERA
     // --------------------------------------------------------
 
     char windText[20];
@@ -631,7 +631,7 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     display.print(windText);
 
     // --------------------------------------------------------
-    // PRESSURE
+    // PRESIONI
     // --------------------------------------------------------
 
     char pressureText[20];

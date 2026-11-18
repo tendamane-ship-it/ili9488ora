@@ -503,7 +503,7 @@ void WebServerManager::handleWeather()
 
     html += "<div class='container'>";
 
-    // Navigation
+    // Navigimi
     html += "<div class='nav'>";
     html += "<a href='/'>Ballina</a>";
     html += "<a class='active' href='/weather'>Moti</a>";
@@ -542,7 +542,7 @@ void WebServerManager::handleWeather()
     }
 
     // --------------------------------------------------------
-    // CURRENT WEATHER
+    // MOTI AKTUAL
     // --------------------------------------------------------
 
     html += "<h2>Moti aktual</h2>";
@@ -622,7 +622,7 @@ void WebServerManager::handleWeather()
     html += "</div>";
 
     // --------------------------------------------------------
-    // 7 DAY FORECAST
+    // PARASHIKIMI 7-DITOR
     // --------------------------------------------------------
 
     html += "<h2>Parashikimi për 7 ditë</h2>";
@@ -683,7 +683,7 @@ void WebServerManager::handleWeather()
     html += "</div>";
 
     // --------------------------------------------------------
-    // FOOTER
+    // FUNDËFAQJA
     // --------------------------------------------------------
 
     appendPageFooter(html, true);

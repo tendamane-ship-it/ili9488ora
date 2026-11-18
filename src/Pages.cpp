@@ -32,7 +32,7 @@ String getDashboardPage()
     html += "<title>ORA - Paneli</title>";
 
     // ============================================================
-    // STYLE
+    // STILI
     // ============================================================
 
     html += "<style>";
@@ -52,7 +52,7 @@ String getDashboardPage()
     html += "padding:20px;";
     html += "}";
 
-    // HEADER
+    // KREU
     html += ".header{";
 html += "margin-bottom:20px;";
 html += "}";
@@ -79,7 +79,7 @@ html += "}";
     html += "box-shadow:0 0 10px #00e676;";
     html += "}";
 
-    // NAV
+    // NAVIGIMI
     html += ".nav{";
     html += "display:flex;";
     html += "gap:8px;";
@@ -107,7 +107,7 @@ html += "}";
     html += "border-color:#00eaff;";
     html += "}";
 
-    // MAIN CLOCK
+    // ORA KRYESORE
     html += ".clock-card{";
     html += "background:linear-gradient(135deg,#0d141c,#101923);";
     html += "border:1px solid #1c3540;";
@@ -138,7 +138,7 @@ html += "}";
     html += "margin-top:5px;";
     html += "}";
 
-    // SECTION
+    // SEKSIONI
     html += ".section-title{";
     html += "font-size:13px;";
     html += "letter-spacing:2px;";
@@ -146,14 +146,14 @@ html += "}";
     html += "margin:24px 0 10px 2px;";
     html += "}";
 
-    // GRID
+    // RRJETI
     html += ".grid{";
     html += "display:grid;";
     html += "grid-template-columns:repeat(3,1fr);";
     html += "gap:12px;";
     html += "}";
 
-    // CARD
+    // KARTELA
     html += ".card{";
     html += "background:#10161e;";
     html += "border:1px solid #202b36;";
@@ -192,7 +192,7 @@ html += "}";
     html += "color:#687985;";
     html += "}";
 
-    // STATUS BADGES
+    // TREGUESIT E GJENDJES
     html += ".badge{";
     html += "display:inline-block;";
     html += "padding:5px 9px;";
@@ -209,7 +209,7 @@ html += "}";
     html += "color:#ff6b6b;";
     html += "}";
 
-    // TWO COLUMN INFORMATION
+    // INFORMACIONI NË DY KOLONA
     html += ".info-grid{";
     html += "display:grid;";
     html += "grid-template-columns:repeat(2,1fr);";
@@ -247,7 +247,7 @@ html += "}";
     html += "text-align:right;";
     html += "}";
 
-    // FOOTER
+    // FUNDËFAQJA
     html += ".footer{";
     html += "text-align:center;";
     html += "margin-top:28px;";
@@ -255,7 +255,7 @@ html += "}";
     html += "color:#4d5c65;";
     html += "}";
 
-    // RESPONSIVE
+    // PËRSHTATJA ME EKRANIN
     html += "@media(max-width:800px){";
     html += ".grid{grid-template-columns:repeat(2,1fr);}";
     html += ".info-grid{grid-template-columns:1fr;}";
@@ -281,7 +281,7 @@ html += "}";
     html += "<div class='container'>";
 
     // ============================================================
-    // NAVIGATION
+    // NAVIGIMI
     // ============================================================
 
     html += "<div class='nav'>";
@@ -294,7 +294,7 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // CLOCK
+    // ORA
     // ============================================================
 
     html += "<div class='clock-card'>";
@@ -308,49 +308,49 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // ENVIRONMENT
+    // MJEDISI
     // ============================================================
 
     html += "<div class='section-title'>MJEDISI</div>";
 
     html += "<div class='grid'>";
 
-    // Temperature
+    // Temperatura
     html += "<div class='card'>";
     html += "<div class='card-title'>Temperatura</div>";
     html += "<div class='value' id='temperature'>--</div>";
     html += "<span class='unit'>°C</span>";
     html += "</div>";
 
-    // Humidity
+    // Lagështia
     html += "<div class='card'>";
     html += "<div class='card-title'>Lagështira</div>";
     html += "<div class='value' id='humidity'>--</div>";
     html += "<span class='unit'>%</span>";
     html += "</div>";
 
-    // Pressure
+    // Presioni
     html += "<div class='card'>";
     html += "<div class='card-title'>Presioni</div>";
     html += "<div class='value' id='pressure'>--</div>";
     html += "<span class='unit'>hPa</span>";
     html += "</div>";
 
-    // Lux
+    // Ndriçimi
     html += "<div class='card'>";
     html += "<div class='card-title'>Ndriçimi</div>";
     html += "<div class='value' id='lux'>--</div>";
     html += "<span class='unit'>lux</span>";
     html += "</div>";
 
-    // Air Quality
+    // Cilësia e ajrit
     html += "<div class='card'>";
     html += "<div class='card-title'>Cilësia e Ajrit</div>";
     html += "<div class='value' id='air'>--</div>";
     html += "<div class='unit' id='gas'>--</div>";
     html += "</div>";
 
-    // Motion
+    // Lëvizja
     html += "<div class='card'>";
     html += "<div class='card-title'>Lëvizja</div>";
     html += "<div id='motion' class='badge'>Pa lëvizje</div>";
@@ -360,7 +360,7 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // WEATHER
+    // MOTI
     // ============================================================
 
     html += "<div class='section-title'>SHËRBIMI I MOTIT</div>";
@@ -387,14 +387,14 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // NETWORK + SYSTEM
+    // RRJETI DHE SISTEMI
     // ============================================================
 
     html += "<div class='section-title'>SISTEMI</div>";
 
     html += "<div class='info-grid'>";
 
-    // Network
+    // Rrjeti
     html += "<div class='info-card'>";
 
     html += "<div class='card-title'>Rrjeti</div>";
@@ -421,7 +421,7 @@ html += "<a href='/api'>Gjendja API</a>";
 
     html += "</div>";
 
-    // System
+    // Sistemi
     html += "<div class='info-card'>";
 
     html += "<div class='card-title'>ESP32 SYSTEM</div>";
@@ -466,7 +466,7 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // ORA SETTINGS STATUS
+    // GJENDJA E CILËSIMEVE TË ORËS
     // ============================================================
 
     html += "<div class='section-title'>CILËSIMET E ORËS</div>";
@@ -521,7 +521,7 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // FOOTER
+    // FUNDËFAQJA
     // ============================================================
 
     html += "<div class='footer'>";
@@ -532,7 +532,7 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "</div>";
 
     // ============================================================
-    // JAVASCRIPT
+    // KODI JAVASCRIPT
     // ============================================================
 
     html += "<script>";
@@ -561,10 +561,10 @@ html += "<a href='/api'>Gjendja API</a>";
     html += ".then(r=>r.json())";
     html += ".then(d=>{";
 
-    // Status
+    // Gjendja
     html += "setText('statusText',d.wifiConnected?'NË LINJË':'JASHTË LINJËS');";
 
-    // Time
+    // Ora
     html += "setText('time',d.time||'--:--:--');";
     html += "setText('date',d.date||'--');";
 
@@ -572,13 +572,13 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "setText('temperature',d.bmeTemperature==null?'--':Number(d.bmeTemperature).toFixed(1));";
     html += "setText('humidity',d.bmeHumidity==null?'--':Number(d.bmeHumidity).toFixed(1));";
 
-    // Pressure from weather/API
+    // Presioni nga moti/API
     html += "setText('pressure',d.pressure==null?'--':Number(d.pressure).toFixed(1));";
 
-    // Lux
+    // Ndriçimi
     html += "setText('lux',d.lux==null?'--':Number(d.lux).toFixed(0));";
 
-    // Gas / Air
+    // Gazi / Cilësia e ajrit
     html += "setText('gas',d.bmeGas==null?'Gaz --':('Gaz '+Number(d.bmeGas).toFixed(0)));";
 
     html += "let air='--';";
@@ -600,18 +600,18 @@ html += "<a href='/api'>Gjendja API</a>";
 
     html += "setText('pirStatus',d.pirState===1?'U zbulua lëvizje':'Në vëzhgim');";
 
-    // Weather
+    // Moti
     html += "setText('weatherTemp',d.temperature==null?'--':Number(d.temperature).toFixed(1));";
     html += "setText('wind',d.windSpeed==null?'--':Number(d.windSpeed).toFixed(1));";
     html += "setText('weatherCode',d.weatherCode==null?'--':d.weatherCode);";
 
-    // Network
+    // Rrjeti
     html += "setText('wifi',d.wifi||'--');";
     html += "setText('ip',d.ip||'--');";
     html += "setText('rssi',d.rssi==null?'--':d.rssi+' dBm');";
     html += "setText('wifiStatus',d.wifiConnected?'I LIDHUR':'I SHKËPUTUR');";
 
-    // System
+    // Sistemi
     html += "setText('cpu',d.cpu==null?'--':d.cpu+' MHz');";
     html += "setText('heap',d.heap==null?'--':Math.round(d.heap/1024)+' KB');";
     html += "setText('flash',d.flash==null?'--':Math.round(d.flash/1048576)+' MB');";
@@ -620,7 +620,7 @@ html += "<a href='/api'>Gjendja API</a>";
     html += "setText('resetCount',d.resetCount==null?'--':d.resetCount);";
     html += "setText('resetHistory',Array.isArray(d.resetHistory)&&d.resetHistory.length?d.resetHistory.join(' ← '):'--');";
 
-    // Settings
+    // Cilësimet
     html += "setText('format',d.setting24Hour?'24 ORË':'12 ORË');";
     html += "setText('dateSetting',onOff(d.settingDate));";
     html += "setText('weatherSetting',onOff(d.settingWeather));";
@@ -919,7 +919,7 @@ html += "</div>";
 
     
     // --------------------------------------------------------
-    // TIME / DISPLAY
+    // ORA DHE EKRANI
     // --------------------------------------------------------
 
     html += "<form method='POST' action='/settings/save'>";
@@ -928,7 +928,7 @@ html += "</div>";
 
     html += "<h2>Ora dhe ekrani</h2>";
 
-    // Clock format
+    // Formati i orës
     html += "<div class='setting'>";
 
     html += "<div>";
@@ -956,7 +956,7 @@ html += "</div>";
 
     html += "</div>";
 
-    // Date
+    // Data
     html += "<div class='setting'>";
 
     html += "<div>";
@@ -987,14 +987,14 @@ html += "</div>";
     html += "</div>";
 
     // --------------------------------------------------------
-    // LOWER PANEL
+    // PANELI I POSHTËM
     // --------------------------------------------------------
 
     html += "<div class='card'>";
 
     html += "<h2>Paneli i poshtëm</h2>";
 
-    // Weather panel
+    // Paneli i motit
     html += "<div class='setting'>";
 
     html += "<div>";
@@ -1136,14 +1136,14 @@ html += "</div>";
     html += "</div>";
 
     // --------------------------------------------------------
-    // SENSORS
+    // SENSORËT
     // --------------------------------------------------------
 
     html += "<div class='card'>";
 
     html += "<h2>Sensorët</h2>";
 
-    // Weather
+    // Moti
     html += "<div class='setting'>";
 
     html += "<div>";
@@ -1157,7 +1157,7 @@ html += "</div>";
 
     html += "</div>";
 
-    // Light sensor
+    // Sensori i dritës
     html += "<div class='setting'>";
 
     html += "<div>";
@@ -1202,13 +1202,13 @@ html += "</div>";
     html += "</div>";
 
   // --------------------------------------------------------
-// SYSTEM
+// SISTEMI
 // --------------------------------------------------------
 html += "<div class='card'>";
 
 html += "<h2>Sistemi</h2>";
 
-// Screensaver
+// Ruajtësi i ekranit
 html += "<div class='setting'>";
 
 html += "<div>";
@@ -1234,7 +1234,7 @@ html += "</div>";
 
 html += "</div>";
 
-// Screensaver timeout
+// Koha e pritjes para aktivizimit të ruajtësit të ekranit
 html += "<div class='setting'>";
 
 html += "<div>";
@@ -1291,7 +1291,7 @@ html += "</div>";
 
 html += "</div>";
 
-// Backlight control
+// Kontrolli i dritës së pasme
 html += "<div class='card'>";
 html += "<h2>Drita e pasme</h2>";
 
@@ -1328,14 +1328,14 @@ html += "</div>";
 html += "</div>";
 
 // --------------------------------------------------------
-// NIGHT MODE
+// MODALITETI I NATËS
 // --------------------------------------------------------
 
 html += "<div class='card'>";
 
 html += "<h2>Modaliteti i natës</h2>";
 
-// Night Mode ON/OFF
+// Aktivizimi/çaktivizimi i modalitetit të natës
 html += "<div class='setting'>";
 
 html += "<div>";
@@ -1361,7 +1361,7 @@ html += "</div>";
 
 html += "</div>";
 
-// Sleep below lux
+// Fikja e ekranit nën këtë nivel ndriçimi (lux)
 html += "<div class='setting'>";
 
 html += "<div>";
@@ -1383,7 +1383,7 @@ html += "</div>";
 
 html += "</div>";
 
-// Wake above lux
+// Ndezja e ekranit mbi këtë nivel ndriçimi (lux)
 html += "<div class='setting'>";
 
 html += "<div>";
@@ -1407,7 +1407,7 @@ html += "</div>";
 
 html += "</div>";
     // --------------------------------------------------------
-    // SAVE
+    // RUAJ
     // --------------------------------------------------------
 
     html += "<button class='save' type='submit'>";
