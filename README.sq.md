@@ -1,29 +1,32 @@
-# ORA Clock me ESP32-S3
+[English documentation](README.md) | **Shqip**
 
-ORA është një orë dhe panel informues i ndërtuar me ESP32-S3 dhe ekran me prekje ILI9488. Shfaq orën, datën, motin dhe të dhënat e sensorëve, si dhe ofron një panel web lokal për statusin dhe konfigurimet.
+# Ora Clock me ESP32-S3
 
-> Dokumentacioni në anglisht: [README.md](README.md).
+Ora është një orë dhe panel i vogël informues, i ndërtuar me ESP32-S3 dhe ekran
+ILI9488. Shfaq orën, motin dhe të dhënat e sensorëve; ofron gjithashtu një
+faqe lokale në rrjet për statusin dhe konfigurimet.
 
-## Veçoritë kryesore
+## Veçoritë
 
 - Ora dhe data sinkronizohen me NTP.
-- Data shfaqet në shqip.
+- Data shfaq ditën e javës dhe datën në shqip, në dy rreshta për lexim më të
+  qartë; teksti në ekran përdor fontin e integruar të pajisjes.
 - Moti aktual dhe parashikimi 7-ditor merren nga Open-Meteo për Sarandën.
-- Ikonat e motit përfshijnë diellin/hënën, retë, shiun, borën, mjegullën dhe vetëtimat; disa prej tyre animohen.
-- Galeria **WEATHER ICONS** lejon shikimin e ikonave të motit.
-- BME680 mat temperaturën, lagështinë, presionin dhe rezistencën e gazit; Bosch BSEC2 llogarit IAQ.
-- BH1750 mat ndriçimin e ambientit.
-- Tuya Cloud shfaq të dhënat e pajisjes së konfiguruar.
-- PIR, kursyesi i ekranit, modaliteti i natës dhe ndriçimi automatik/manuel i ekranit.
-- Portal Wi-Fi për konfigurimin e rrjetit.
-- Panel web lokal me statusin, konfigurimet dhe diagnostikimin e nisjeve.
-
-## Dokumentacioni
-
-- [Pajisjet dhe lidhjet GPIO](docs/HARDWARE.md)
-- [Instalimi dhe ngarkimi i firmware-it](docs/INSTALLATION.md)
-- [Arkitektura e softuerit](docs/SOFTWARE.md)
-- [Funksionet e ORA-s](docs/FEATURES.md)
+- Ikonat e motit përfshijnë diellin/hënën, retë, shiun, borën, mjegullën dhe
+  vetëtimat; retë, pikat, flokët e borës dhe vetëtimat animohen sipas motit.
+- Galeria **WEATHER ICONS** në menynë e ekranit lejon shikimin e ikonave pa
+  pritur kushtet përkatëse të motit.
+- Sensori BME680 mat temperaturën, lagështinë, presionin dhe rezistencën e
+  gazit; Bosch BSEC2 llogarit indeksin IAQ dhe BH1750 mat ndriçimin.
+- Lidhja me Tuya Cloud shfaq të dhënat e pajisjes së konfiguruar.
+- PIR, kursyesi i ekranit, modaliteti i natës dhe paneli lokal web mund të
+  përdoren sipas konfigurimit të projektit.
+- Kur nuk ka kredenciale Wi-Fi të ruajtura, pajisja hap portalin e konfigurimit.
+- Wi-Fi përdor DHCP për të marrë automatikisht adresën IP nga routeri.
+- Shkaku dhe historia e tetë nisjeve të fundit ruhen në NVS dhe shfaqen te paneli
+  web; mund të kontrollohen nga telefoni në të njëjtin rrjet. Regjistrohet
+  arsyeja vetëm kur ESP32 arrin të nisë kodin pas reset-it; një dështim i
+  furnizimit që pengon nisjen nuk mund të regjistrohet nga firmware-i.
 
 ## Pajisjet dhe lidhjet
 
@@ -40,42 +43,87 @@ ORA është një orë dhe panel informues i ndërtuar me ESP32-S3 dhe ekran me p
 | I2C SDA (BME680, BH1750) | GPIO 8 |
 | I2C SCL (BME680, BH1750) | GPIO 9 |
 | PIR | GPIO 42 |
-| Backlight (BL) | GPIO 15 |
 
-Kontrolloni pinout-in e pllakës dhe të moduleve përpara lidhjes. Shihni [HARDWARE.md](docs/HARDWARE.md) për hollësi.
+Kontrollo gjithmonë pinout-in e pllakës dhe të moduleve para lidhjes. Drita e
+pasme (BL) lidhet te GPIO 15.
 
-## Përgatitja e projektit
+### Kontrolli i dritës së pasme
 
-1. Instaloni VS Code dhe PlatformIO IDE.
-2. Klononi repository-n dhe hapni dosjen në VS Code.
-3. Kopjoni modelin e kredencialeve Tuya:
+Te **Cilësimet → Drita e pasme**, zgjidh kontrollin automatik me BH1750 ose
+manual dhe cakto nivelin `0`–`255`. Automatikja fik BL kur aktivizohet Night
+Mode dhe e ndez kur sensori raporton dritë të mjaftueshme. Nëse BH1750 dështon
+në modalitetin automatik, ora del nga Night Mode dhe e vendos BL në `255` si
+masë rezervë. Modaliteti manual anashkalon BH1750 dhe Night Mode; niveli manual
+mund të vendoset nga `0` deri në `255` (fillimisht `255`), ku `0` e fik BL.
+
+Kur sensori funksionon dhe Night Mode nuk e ka fikur ekranin, modaliteti
+automatik përdor këto nivele PWM:
+
+| Ndriçimi BH1750 | PWM i dritës së pasme |
+|---|---:|
+| Nën 20 lux | 32 |
+| 20–99 lux | 64 |
+| 100–299 lux | 112 |
+| 300–799 lux | 180 |
+| 800 lux e lart | 255 |
+
+Kalimi mes niveleve zbutet me rritje/ulje graduale të PWM-së. Këto janë vlera
+fillestare praktike; mund të kalibrohen sipas ekranit dhe ndriçimit të dhomës.
+
+### Testi i dritës së pasme
+
+Testi ngarkohet veçmas dhe nuk përfshin kodin e orës. Zgjidh mjedisin
+`esp32-s3-backlight-test` në PlatformIO dhe ekzekuto **Build**, pastaj **Upload**.
+Hap Serial Monitor me shpejtësi `115200` dhe dërgo komandat me rresht të ri:
+
+- `0`–`255`: cakton ndriçimin, ku `0` fikur dhe `255` maksimum.
+- `a`: nis ose ndal ciklin automatik të ndriçimit.
+- `s`: ndal ciklin dhe mban ndriçimin aktual.
+- `?`: shfaq ndihmën.
+
+Programi nis me ndriçim `128/255`. Për ndërtim nga terminali përdor
+`pio run -e esp32-s3-backlight-test`; për ngarkim shto
+`-t upload`.
+
+## Përgatitja dhe ngarkimi
+
+1. Instalo VS Code dhe zgjerimin PlatformIO IDE.
+2. Klono projektin dhe hape dosjen në VS Code.
+3. Krijo skedarin lokal të kredencialeve Tuya duke kopjuar modelin:
 
    ```powershell
    Copy-Item src\secrets.example.h src\secrets.h
    ```
 
-4. Plotësoni Client ID, Client Secret dhe Device ID në `src/secrets.h`, nëse do të përdorni integrimin Tuya.
-5. Zgjidhni portën COM të pajisjes në `platformio.ini`, nëse është e nevojshme.
-6. Ekzekutoni **Build**, pastaj **Upload** nga PlatformIO.
+4. Plotëso vlerat Tuya në `src/secrets.h`. Ky skedar përjashtohet nga Git; mos
+   e publiko dhe mos i vendos kredencialet reale në `secrets.example.h`.
+5. Zgjidh portën COM të ESP32-S3 te `platformio.ini` nëse nuk është `COM4`.
+6. Nga PlatformIO ekzekuto **Build**, pastaj **Upload**.
 
-Udhëzimet e plota gjenden te [INSTALLATION.md](docs/INSTALLATION.md).
+Në nisjen e parë, lidhu me pikën e aksesit të konfigurimit Wi-Fi. Emri i saj
+dhe fjalëkalimi i përkohshëm shfaqen në Serial Monitor me shpejtësi `115200`.
+Pasi të lidhesh me pikën e aksesit, hap `http://192.168.4.1` në shfletues,
+ruaj emrin dhe fjalëkalimin e routerit dhe ESP32 do t'i ruajë lokalisht.
 
-## Paneli web dhe Wi-Fi
+## Konfigurimi i shërbimeve
 
-Nëse pajisja nuk ka kredenciale Wi-Fi të ruajtura ose nuk arrin të lidhet, firmware-i mund të hapë portalin e konfigurimit. SSID-ja dhe fjalëkalimi i përkohshëm shfaqen në Serial Monitor (115200 baud). Lidheni telefonin me pikën e aksesit dhe hapni `http://192.168.4.1`.
+- Koordinatat e Open-Meteo dhe zona kohore përcaktohen në kodin e shërbimit të
+  motit.
+- Tuya kërkon Client ID, Client Secret dhe Device ID në `src/secrets.h`.
+- Pas lidhjes me Wi-Fi, adresa IP e ESP32-së përdoret për të hapur panelin web
+  nga një pajisje në të njëjtin rrjet lokal. Adresa caktohet nga routeri me
+  DHCP dhe mund të ndryshojë; kontrolloje te paneli i routerit ose në Serial
+  Monitor pas nisjes.
 
-Pas lidhjes me routerin, hapni adresën IP lokale të ESP32-së në shfletues nga një pajisje në të njëjtin rrjet. IP-ja merret me DHCP dhe mund të ndryshojë.
+## Shënim për BME680
 
-**Siguria:** paneli është menduar për rrjetin lokal. Mos e ekspozoni drejtpërdrejt në internet dhe mos publikoni kredenciale Wi-Fi ose Tuya.
+Rezistenca e gazit e BME680 është një tregues relativ i përbërjeve organike
+të paqëndrueshme (VOC); nuk është matje e drejtpërdrejtë e CO₂ dhe nuk duhet
+përdorur si pajisje sigurie.
 
-## Shënim për sensorin BME680
-
-Rezistenca e gazit është tregues relativ i përbërjeve organike të paqëndrueshme (VOC), jo matje e drejtpërdrejtë e CO₂. IAQ nuk është matje mjekësore dhe pajisja nuk duhet përdorur si alarm apo pajisje sigurie. BSEC2 mund të kërkojë periudhë kondicionimi dhe ruan gjendjen e algoritmit në NVS.
-
-## Fotot e projektit
-
-Fotot reale të pajisjes së përfunduar, kutisë dhe montimit do të shtohen pas përfundimit të kutisë.
-
-## Licencimi dhe komponentët e palëve të treta
-
-Kontrolloni kushtet e licencës së Bosch BSEC2 përpara rishpërndarjes së firmware-it. Wrapper-i i bibliotekës Bosch dhe binarët BSEC mund të kenë kushte të ndryshme licencimi.
+BSEC2 raporton IAQ në shkallën 0–500 bashkë me saktësinë 0–3. Vlerat me
+saktësi 0 shënohen si në kalibrim; sensorit mund t'i duhen deri në 24 orë
+kondicionim dhe algoritmi përshtatet me historikun e mjedisit. Gjendja e
+algoritmit ruhet lokalisht në NVS çdo 6 orë. Biblioteka e wrapper-it Bosch
+është BSD-3-Clause, ndërsa binarët BSEC mbulohen nga licenca e veçantë e
+Bosch-it; pranoni kushtet e saj para rishpërndarjes së firmware-it.
