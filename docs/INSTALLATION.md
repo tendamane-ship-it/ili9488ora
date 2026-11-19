@@ -73,7 +73,7 @@ PlatformIO also defines `esp32-s3-backlight-test`, which builds the separate bac
 ```bash
 pio run -e esp32-s3-backlight-test
 pio run -e esp32-s3-backlight-test -t upload
-``
+```
 
 ## Troubleshooting
 
