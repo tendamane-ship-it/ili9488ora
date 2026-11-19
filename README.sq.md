@@ -21,7 +21,7 @@ faqe lokale në rrjet për statusin dhe konfigurimet.
 - Lidhja me Tuya Cloud shfaq të dhënat e pajisjes së konfiguruar.
 - PIR, kursyesi i ekranit, modaliteti i natës dhe paneli lokal web mund të
   përdoren sipas konfigurimit të projektit.
-- Kur nuk ka kredenciale Wi-Fi të ruajtura, pajisja hap portalin e konfigurimit.
+- Nëse mungojnë kredencialet Wi-Fi të ruajtura ose lidhja me routerin dështon, pajisja hap portalin e konfigurimit.
 - Wi-Fi përdor DHCP për të marrë automatikisht adresën IP nga routeri.
 - Shkaku dhe historia e tetë nisjeve të fundit ruhen në NVS dhe shfaqen te paneli
   web; mund të kontrollohen nga telefoni në të njëjtin rrjet. Regjistrohet
@@ -113,7 +113,10 @@ ruaj emrin dhe fjalëkalimin e routerit dhe ESP32 do t'i ruajë lokalisht.
 - Pas lidhjes me Wi-Fi, adresa IP e ESP32-së përdoret për të hapur panelin web
   nga një pajisje në të njëjtin rrjet lokal. Adresa caktohet nga routeri me
   DHCP dhe mund të ndryshojë; kontrolloje te paneli i routerit ose në Serial
-  Monitor pas nisjes.
+  Monitor pas nisjes. Paneli web nuk ka aktualisht autentikim me përdorues dhe
+  fjalëkalim: pajisjet në të njëjtin LAN mund të shohin statusin dhe të përdorin
+  funksionet e cilësimeve ose rinisjes. Mbaje vetëm në rrjet të besuar dhe mos e
+  ekspozo drejtpërdrejt në internet.
 
 ## Shënim për BME680
 
@@ -124,6 +127,8 @@ përdorur si pajisje sigurie.
 BSEC2 raporton IAQ në shkallën 0–500 bashkë me saktësinë 0–3. Vlerat me
 saktësi 0 shënohen si në kalibrim; sensorit mund t'i duhen deri në 24 orë
 kondicionim dhe algoritmi përshtatet me historikun e mjedisit. Gjendja e
-algoritmit ruhet lokalisht në NVS çdo 6 orë. Biblioteka e wrapper-it Bosch
-është BSD-3-Clause, ndërsa binarët BSEC mbulohen nga licenca e veçantë e
-Bosch-it; pranoni kushtet e saj para rishpërndarjes së firmware-it.
+algoritmit ruhet lokalisht në NVS çdo 6 orë. Biblioteka BME68x dhe BSEC2
+janë komponentë të palëve të treta me kushte licencimi të veçanta. Ky
+repository nuk ka ende një licencë të përgjithshme për projektin ORA.
+Para rishpërndarjes së firmware-it ose kodit, kontrolloni licencat përkatëse
+të të gjitha varësive, veçanërisht kushtet e Bosch BSEC2.

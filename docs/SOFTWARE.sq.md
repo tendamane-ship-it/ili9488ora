@@ -33,7 +33,7 @@ Preferences/NVS përdoret për cilësimet e pajisjes dhe kredencialet Wi-Fi. Dia
 
 `WebServerManager` zbaton ndërfaqen lokale web dhe endpoint-et JSON të statusit. Portali i konfigurimit Wi-Fi zbatohet veçmas nga `WiFiManager`.
 
-Paneli është menduar për përdorim në një LAN të besuar. Trajtojeni si ndërfaqe administrimi lokale dhe mos e ekspozoni drejtpërdrejt në internet.
+Paneli nuk ka aktualisht autentikim me përdorues/fjalëkalim. Çdo pajisje me qasje në LAN mund të shohë statusin dhe të përdorë endpoint-et e cilësimeve ose rinisjes. Trajtojeni si ndërfaqe administrimi lokale në rrjet të besuar dhe mos e ekspozoni drejtpërdrejt në internet.
 
 ## Menaxhimi i memories
 

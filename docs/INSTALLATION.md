@@ -64,7 +64,7 @@ Enter the home router SSID and password. The device stores the credentials local
 
 Find the ESP32 IP address in Serial Monitor or the router's connected-device list. Open that IP from a browser on the same local network. The IP may change when DHCP assigns a new lease.
 
-Do not forward the dashboard port to the public internet. Use a secure VPN if remote access is needed.
+The dashboard currently has no user/password authentication; devices on the same LAN can access its status, settings and restart functions. Keep it on a trusted network. Do not forward its port to the public internet. Use a secure VPN if remote access is needed.
 
 ## Separate backlight test
 
@@ -73,7 +73,7 @@ PlatformIO also defines `esp32-s3-backlight-test`, which builds the separate bac
 ```bash
 pio run -e esp32-s3-backlight-test
 pio run -e esp32-s3-backlight-test -t upload
-``
+```
 
 ## Troubleshooting
 
