@@ -129,6 +129,8 @@ saktësi 0 shënohen si në kalibrim; sensorit mund t'i duhen deri në 24 orë
 kondicionim dhe algoritmi përshtatet me historikun e mjedisit. Gjendja e
 algoritmit ruhet lokalisht në NVS çdo 6 orë. Biblioteka BME68x dhe BSEC2
 janë komponentë të palëve të treta me kushte licencimi të veçanta. Ky
-repository nuk ka ende një licencë të përgjithshme për projektin ORA.
-Para rishpërndarjes së firmware-it ose kodit, kontrolloni licencat përkatëse
-të të gjitha varësive, veçanërisht kushtet e Bosch BSEC2.
+kodi origjinal dhe dokumentacioni i projektit ORA publikohen me licencën MIT
+(shih skedarin [`LICENSE`](LICENSE)). Kjo licencë nuk zëvendëson dhe nuk
+ndryshon licencat e komponentëve të palëve të treta. Në veçanti, kodi,
+libraritë dhe binarët Bosch BME68x/BSEC2 mbeten subjekt i kushteve të tyre
+përkatëse. Kontrolloni licencën Bosch BSEC para rishpërndarjes së firmware-it.

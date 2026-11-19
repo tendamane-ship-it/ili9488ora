@@ -71,7 +71,7 @@ Photos of the completed enclosure, assembled device and verified wiring will be 
 
 ## Third-party software and licensing
 
-This project depends on third-party libraries, including Bosch BME68x and BSEC2 components. The Bosch wrapper library and BSEC binary components may be subject to different license terms. Review and comply with Bosch's applicable BSEC license before redistributing firmware binaries. A repository-wide project license should be selected and added separately; do not assume third-party dependencies are covered by it.
+The original ORA project code and documentation are released under the MIT License (see [`LICENSE`](LICENSE)). This license does not replace or override licenses for third-party components. In particular, Bosch BME68x/BSEC2 source, libraries and binary components retain their own applicable license terms. Review Bosch's BSEC license before redistributing firmware binaries.
 
 ## Contributing
 
