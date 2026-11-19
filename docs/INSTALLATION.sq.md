@@ -64,7 +64,7 @@ Vendosni emrin dhe fjalëkalimin e routerit. Pajisja i ruan lokalisht dhe provon
 
 Gjeni IP-në e ESP32-së në Serial Monitor ose në listën e pajisjeve të lidhura në router. Hapeni nga shfletuesi i një pajisjeje në të njëjtin rrjet lokal. IP-ja mund të ndryshojë kur routeri cakton një adresë të re përmes DHCP.
 
-Mos e ekspozoni portin e panelit drejtpërdrejt në internet. Për akses nga distanca përdorni VPN të sigurt.
+Paneli nuk ka aktualisht autentikim me përdorues/fjalëkalim; pajisjet në të njëjtin LAN mund të shohin statusin dhe të përdorin cilësimet ose rinisjen. Mbajeni në rrjet të besuar. Mos e ekspozoni portin drejtpërdrejt në internet; për akses nga distanca përdorni VPN të sigurt.
 
 ## Testi i veçantë i dritës së pasme
 
