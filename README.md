@@ -59,7 +59,7 @@ If saved Wi-Fi credentials are unavailable or the connection attempt fails, the 
 
 After the ESP32 joins the LAN, open its DHCP-assigned IP address in a browser on the same local network. The address can change when the router renews the DHCP lease.
 
-**Security:** the dashboard is intended for a trusted local network. Do not expose it directly to the public internet. Never commit Wi-Fi credentials, Tuya secrets or access tokens.
+**Security:** the dashboard currently has no user/password authentication. Devices with access to the same LAN may view status and use configuration or restart endpoints. Keep it on a trusted local network; do not expose it directly to the public internet. Never commit Wi-Fi credentials, Tuya secrets or access tokens.
 
 ## Sensors and measurement limitations
 
