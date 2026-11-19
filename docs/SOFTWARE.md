@@ -33,7 +33,7 @@ Preferences/NVS are used for device settings and stored Wi-Fi credentials. Reset
 
 `WebServerManager` implements the local web interface and JSON status endpoints. The Wi-Fi setup portal is implemented separately by `WiFiManager`.
 
-The dashboard is intended for access from the same trusted LAN. Treat it as a local administration interface; do not expose it directly to the public internet.
+The dashboard currently has no user/password authentication. Any device with LAN access may view status and use settings or restart endpoints. Treat it as a local administration interface on a trusted network; do not expose it directly to the public internet.
 
 ## Memory-aware display behavior
 
