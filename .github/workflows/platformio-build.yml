@@ -1,0 +1,61 @@
+name: PlatformIO Build
+
+on:
+  push:
+    branches:
+      - copilot-help
+      - fix/earlier-auto-brightness-response
+  pull_request:
+    branches:
+      - copilot-help
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ESP32-S3 ORA
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install PlatformIO
+        run: python -m pip install --upgrade platformio
+
+      - name: Create secrets.h for compilation
+        env:
+          TUYA_CLIENT_ID: ${{ secrets.TUYA_CLIENT_ID }}
+          TUYA_CLIENT_SECRET: ${{ secrets.TUYA_CLIENT_SECRET }}
+          TUYA_DEVICE_ID: ${{ secrets.TUYA_DEVICE_ID }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          values = {
+              "TUYA_CLIENT_ID": os.environ.get("TUYA_CLIENT_ID") or "",
+              "TUYA_CLIENT_SECRET": os.environ.get("TUYA_CLIENT_SECRET") or "",
+              "TUYA_DEVICE_ID": os.environ.get("TUYA_DEVICE_ID") or "",
+          }
+
+          lines = [
+              "#pragma once",
+              "",
+              f'#define TUYA_CLIENT_ID {json.dumps(values["TUYA_CLIENT_ID"])}',
+              f'#define TUYA_CLIENT_SECRET {json.dumps(values["TUYA_CLIENT_SECRET"])}',
+              f'#define TUYA_DEVICE_ID {json.dumps(values["TUYA_DEVICE_ID"])}',
+              "",
+              '#define TUYA_API_HOST "openapi.tuyaeu.com"',
+              "",
+          ]
+          Path("src/secrets.h").write_text("\\n".join(lines), encoding="utf-8")
+          print("Created compilation-only secrets.h; Tuya credentials are optional.")
+          PY
+
+      - name: Compile project
+        run: pio run -e esp32-s3-devkitc-1
