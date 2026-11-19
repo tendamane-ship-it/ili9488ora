@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.11"
 
       - name: Install PlatformIO
         run: python -m pip install --upgrade platformio
@@ -56,6 +56,9 @@ jobs:
           Path("src/secrets.h").write_text("\\n".join(lines), encoding="utf-8")
           print("Created compilation-only secrets.h; Tuya credentials are optional.")
           PY
+
+      - name: Use the project's known ESP32 platform version
+        run: sed -i 's/^platform = espressif32$/platform = espressif32@7.1.2/' platformio.ini
 
       - name: Compile project
         run: pio run -e esp32-s3-devkitc-1
