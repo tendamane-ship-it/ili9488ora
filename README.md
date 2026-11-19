@@ -1,127 +1,78 @@
-# Ora Clock me ESP32-S3
+# ORA — ESP32-S3 Smart Clock
 
-Ora është një orë dhe panel i vogël informues, i ndërtuar me ESP32-S3 dhe ekran
-ILI9488. Shfaq orën, motin dhe të dhënat e sensorëve; ofron gjithashtu një
-faqe lokale në rrjet për statusin dhe konfigurimet.
+ORA is an ESP32-S3-based smart clock and compact information display built around an ILI9488 touchscreen. It presents time, date, weather and environmental sensor data, with a local web dashboard for status and configuration.
 
-## Veçoritë
+**Languages:** [English](README.md) | [Shqip](README.sq.md)
 
-- Ora dhe data sinkronizohen me NTP.
-- Data shfaq ditën e javës dhe datën në shqip, në dy rreshta për lexim më të
-  qartë; teksti në ekran përdor fontin e integruar të pajisjes.
-- Moti aktual dhe parashikimi 7-ditor merren nga Open-Meteo për Sarandën.
-- Ikonat e motit përfshijnë diellin/hënën, retë, shiun, borën, mjegullën dhe
-  vetëtimat; retë, pikat, flokët e borës dhe vetëtimat animohen sipas motit.
-- Galeria **WEATHER ICONS** në menynë e ekranit lejon shikimin e ikonave pa
-  pritur kushtet përkatëse të motit.
-- Sensori BME680 mat temperaturën, lagështinë, presionin dhe rezistencën e
-  gazit; Bosch BSEC2 llogarit indeksin IAQ dhe BH1750 mat ndriçimin.
-- Lidhja me Tuya Cloud shfaq të dhënat e pajisjes së konfiguruar.
-- PIR, kursyesi i ekranit, modaliteti i natës dhe paneli lokal web mund të
-  përdoren sipas konfigurimit të projektit.
-- Kur nuk ka kredenciale Wi-Fi të ruajtura, pajisja hap portalin e konfigurimit.
-- Wi-Fi përdor DHCP për të marrë automatikisht adresën IP nga routeri.
-- Shkaku dhe historia e tetë nisjeve të fundit ruhen në NVS dhe shfaqen te paneli
-  web; mund të kontrollohen nga telefoni në të njëjtin rrjet. Regjistrohet
-  arsyeja vetëm kur ESP32 arrin të nisë kodin pas reset-it; një dështim i
-  furnizimit që pengon nisjen nuk mund të regjistrohet nga firmware-i.
+## Highlights
 
-## Pajisjet dhe lidhjet
+- NTP-synchronized clock with 12/24-hour display option and Albanian date presentation.
+- ILI9488 TFT display with XPT2046 touch input, on-screen menu and About page.
+- Current weather and 7-day forecast from Open-Meteo, configured for Sarandë, Albania.
+- Weather icon gallery and selected animated weather elements.
+- BME680 environmental measurements with Bosch BSEC2 IAQ output.
+- BH1750 ambient-light measurement and automatic/manual backlight control.
+- PIR motion detection, inactivity screen saver and optional welcome greeting.
+- Night mode based on ambient-light thresholds.
+- Wi-Fi setup portal, DHCP connectivity and automatic reconnect attempts.
+- Local web dashboard, JSON status endpoints and recent boot/reset diagnostics.
+- Optional Tuya Cloud device integration.
 
-| Pajisja | ESP32-S3 |
-|---|---|
-| ILI9488 MOSI | GPIO 7 |
-| ILI9488 MISO | GPIO 5 |
-| ILI9488 SCLK | GPIO 4 |
-| ILI9488 CS | GPIO 6 |
-| ILI9488 DC | GPIO 2 |
-| ILI9488 RST | GPIO 3 |
-| XPT2046 Touch CS | GPIO 17 |
-| XPT2046 Touch IRQ | GPIO 14 |
-| I2C SDA (BME680, BH1750) | GPIO 8 |
-| I2C SCL (BME680, BH1750) | GPIO 9 |
-| PIR | GPIO 42 |
+## Documentation
 
-Kontrollo gjithmonë pinout-in e pllakës dhe të moduleve para lidhjes. Drita e
-pasme (BL) lidhet te GPIO 15.
+| Guide | English | Shqip |
+|---|---|---|
+| Hardware and GPIO | [HARDWARE.md](docs/HARDWARE.md) | [HARDWARE.sq.md](docs/HARDWARE.sq.md) |
+| Installation | [INSTALLATION.md](docs/INSTALLATION.md) | [INSTALLATION.sq.md](docs/INSTALLATION.sq.md) |
+| Software architecture | [SOFTWARE.md](docs/SOFTWARE.md) | [SOFTWARE.sq.md](docs/SOFTWARE.sq.md) |
+| Features | [FEATURES.md](docs/FEATURES.md) | [FEATURES.sq.md](docs/FEATURES.sq.md) |
 
-### Kontrolli i dritës së pasme
+## Hardware at a glance
 
-Te **Cilësimet → Drita e pasme**, zgjidh kontrollin automatik me BH1750 ose
-manual dhe cakto nivelin `0`–`255`. Automatikja fik BL kur aktivizohet Night
-Mode dhe e ndez kur sensori raporton dritë të mjaftueshme. Nëse BH1750 dështon
-në modalitetin automatik, ora del nga Night Mode dhe e vendos BL në `255` si
-masë rezervë. Modaliteti manual anashkalon BH1750 dhe Night Mode; niveli manual
-mund të vendoset nga `0` deri në `255` (fillimisht `255`), ku `0` e fik BL.
-
-Kur sensori funksionon dhe Night Mode nuk e ka fikur ekranin, modaliteti
-automatik përdor këto nivele PWM:
-
-| Ndriçimi BH1750 | PWM i dritës së pasme |
+| Component / signal | ESP32-S3 |
 |---|---:|
-| Nën 20 lux | 32 |
-| 20–99 lux | 64 |
-| 100–299 lux | 112 |
-| 300–799 lux | 180 |
-| 800 lux e lart | 255 |
+| ILI9488 MOSI / MISO / SCLK | GPIO 7 / 5 / 4 |
+| ILI9488 CS / DC / RESET | GPIO 6 / 2 / 3 |
+| XPT2046 Touch CS / IRQ | GPIO 17 / 14 |
+| I2C SDA / SCL (BME680, BH1750) | GPIO 8 / 9 |
+| PIR output | GPIO 42 |
+| TFT backlight control | GPIO 15 |
 
-Kalimi mes niveleve zbutet me rritje/ulje graduale të PWM-së. Këto janë vlera
-fillestare praktike; mund të kalibrohen sipas ekranit dhe ndriçimit të dhomës.
+See the [hardware guide](docs/HARDWARE.md) for wiring notes and electrical precautions.
 
-### Testi i dritës së pasme
+## Build and upload
 
-Testi ngarkohet veçmas dhe nuk përfshin kodin e orës. Zgjidh mjedisin
-`esp32-s3-backlight-test` në PlatformIO dhe ekzekuto **Build**, pastaj **Upload**.
-Hap Serial Monitor me shpejtësi `115200` dhe dërgo komandat me rresht të ri:
+The project uses PlatformIO with the Arduino framework. Clone the repository, open it in VS Code with PlatformIO IDE, select the `esp32-s3-devkitc-1` environment, then build and upload.
 
-- `0`–`255`: cakton ndriçimin, ku `0` fikur dhe `255` maksimum.
-- `a`: nis ose ndal ciklin automatik të ndriçimit.
-- `s`: ndal ciklin dhe mban ndriçimin aktual.
-- `?`: shfaq ndihmën.
+```bash
+git clone https://github.com/tendamane-ship-it/ili9488ora.git
+cd ili9488ora
+pio run -e esp32-s3-devkitc-1
+pio run -e esp32-s3-devkitc-1 -t upload
+```
 
-Programi nis me ndriçim `128/255`. Për ndërtim nga terminali përdor
-`pio run -e esp32-s3-backlight-test`; për ngarkim shto
-`-t upload`.
+The checked-in `platformio.ini` currently specifies COM4 for upload and serial monitoring; change it to the port assigned by your computer.
 
-## Përgatitja dhe ngarkimi
+## Wi-Fi and local dashboard
 
-1. Instalo VS Code dhe zgjerimin PlatformIO IDE.
-2. Klono projektin dhe hape dosjen në VS Code.
-3. Krijo skedarin lokal të kredencialeve Tuya duke kopjuar modelin:
+If saved Wi-Fi credentials are unavailable or the connection attempt fails, the firmware starts the setup access point `ili9488ora-setup`. The temporary password is generated at runtime and printed to Serial Monitor at 115200 baud. Connect to the access point and open `http://192.168.4.1` to enter your router credentials.
 
-   ```powershell
-   Copy-Item src\secrets.example.h src\secrets.h
-   ```
+After the ESP32 joins the LAN, open its DHCP-assigned IP address in a browser on the same local network. The address can change when the router renews the DHCP lease.
 
-4. Plotëso vlerat Tuya në `src/secrets.h`. Ky skedar përjashtohet nga Git; mos
-   e publiko dhe mos i vendos kredencialet reale në `secrets.example.h`.
-5. Zgjidh portën COM të ESP32-S3 te `platformio.ini` nëse nuk është `COM4`.
-6. Nga PlatformIO ekzekuto **Build**, pastaj **Upload**.
+**Security:** the dashboard is intended for a trusted local network. Do not expose it directly to the public internet. Never commit Wi-Fi credentials, Tuya secrets or access tokens.
 
-Në nisjen e parë, lidhu me pikën e aksesit të konfigurimit Wi-Fi. Emri i saj
-dhe fjalëkalimi i përkohshëm shfaqen në Serial Monitor me shpejtësi `115200`.
-Pasi të lidhesh me pikën e aksesit, hap `http://192.168.4.1` në shfletues,
-ruaj emrin dhe fjalëkalimin e routerit dhe ESP32 do t'i ruajë lokalisht.
+## Sensors and measurement limitations
 
-## Konfigurimi i shërbimeve
+The BME680 gas-resistance value is a relative indicator of volatile organic compounds (VOC), not a direct CO₂ measurement. BSEC2 IAQ is an algorithmic air-quality estimate and may require conditioning time. ORA is not a certified air-quality or life-safety device.
 
-- Koordinatat e Open-Meteo dhe zona kohore përcaktohen në kodin e shërbimit të
-  motit.
-- Tuya kërkon Client ID, Client Secret dhe Device ID në `src/secrets.h`.
-- Pas lidhjes me Wi-Fi, adresa IP e ESP32-së përdoret për të hapur panelin web
-  nga një pajisje në të njëjtin rrjet lokal. Adresa caktohet nga routeri me
-  DHCP dhe mund të ndryshojë; kontrolloje te paneli i routerit ose në Serial
-  Monitor pas nisjes.
+## Project photos
 
-## Shënim për BME680
+Photos of the completed enclosure, assembled device and verified wiring will be added after the physical build is finished.
 
-Rezistenca e gazit e BME680 është një tregues relativ i përbërjeve organike
-të paqëndrueshme (VOC); nuk është matje e drejtpërdrejtë e CO₂ dhe nuk duhet
-përdorur si pajisje sigurie.
+## Third-party software and licensing
 
-BSEC2 raporton IAQ në shkallën 0–500 bashkë me saktësinë 0–3. Vlerat me
-saktësi 0 shënohen si në kalibrim; sensorit mund t'i duhen deri në 24 orë
-kondicionim dhe algoritmi përshtatet me historikun e mjedisit. Gjendja e
-algoritmit ruhet lokalisht në NVS çdo 6 orë. Biblioteka e wrapper-it Bosch
-është BSD-3-Clause, ndërsa binarët BSEC mbulohen nga licenca e veçantë e
-Bosch-it; pranoni kushtet e saj para rishpërndarjes së firmware-it.
+This project depends on third-party libraries, including Bosch BME68x and BSEC2 components. The Bosch wrapper library and BSEC binary components may be subject to different license terms. Review and comply with Bosch's applicable BSEC license before redistributing firmware binaries. A repository-wide project license should be selected and added separately; do not assume third-party dependencies are covered by it.
+
+## Contributing
+
+Issues, corrections and build notes from other makers are welcome. Please do not include private credentials, personal network details or secrets in issues and pull requests.
