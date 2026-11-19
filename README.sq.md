@@ -113,7 +113,10 @@ ruaj emrin dhe fjalëkalimin e routerit dhe ESP32 do t'i ruajë lokalisht.
 - Pas lidhjes me Wi-Fi, adresa IP e ESP32-së përdoret për të hapur panelin web
   nga një pajisje në të njëjtin rrjet lokal. Adresa caktohet nga routeri me
   DHCP dhe mund të ndryshojë; kontrolloje te paneli i routerit ose në Serial
-  Monitor pas nisjes.
+  Monitor pas nisjes. Paneli web nuk ka aktualisht autentikim me përdorues dhe
+  fjalëkalim: pajisjet në të njëjtin LAN mund të shohin statusin dhe të përdorin
+  funksionet e cilësimeve ose rinisjes. Mbaje vetëm në rrjet të besuar dhe mos e
+  ekspozo drejtpërdrejt në internet.
 
 ## Shënim për BME680
 
