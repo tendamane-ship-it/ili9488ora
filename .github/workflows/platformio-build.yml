@@ -18,11 +18,15 @@ jobs:
           python-version: '3.11'
       - name: Install PlatformIO
         run: pip install platformio
+      - name: Create compile-only Tuya secrets header
+        run: |
+          cat > include/secrets.h <<'EOF'
+          #pragma once
+          // CI-only placeholders: this build checks compilation, not Tuya connectivity.
+          #define TUYA_API_HOST "openapi.tuyaeu.com"
+          #define TUYA_CLIENT_ID "CI_PLACEHOLDER"
+          #define TUYA_CLIENT_SECRET "CI_PLACEHOLDER"
+          #define TUYA_DEVICE_ID "CI_PLACEHOLDER"
+          EOF
       - name: Build ESP32-S3 firmware
         run: pio run -e esp32-s3-devkitc-1
-      - name: Upload firmware
-        uses: actions/upload-artifact@v4
-        with:
-          name: ORA-ESP32-S3-firmware
-          path: .pio/build/esp32-s3-devkitc-1/firmware.bin
-          if-no-files-found: error
