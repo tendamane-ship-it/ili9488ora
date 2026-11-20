@@ -109,13 +109,13 @@ uint8_t getAutomaticBacklightTarget()
     constexpr float LUX_HYSTERESIS = 12.0f; // lx
 
     uint8_t rawTarget;
-    if (bh1750Lux < 20.0f)
+    if (bh1750Lux < 5.0f)
         rawTarget = 32;
-    else if (bh1750Lux < 100.0f)
+    else if (bh1750Lux < 20.0f)
         rawTarget = 64;
-    else if (bh1750Lux < 300.0f)
+    else if (bh1750Lux < 60.0f)
         rawTarget = 112;
-    else if (bh1750Lux < 800.0f)
+    else if (bh1750Lux < 200.0f)
         rawTarget = 180;
     else
         rawTarget = 255;
