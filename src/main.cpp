@@ -13,6 +13,7 @@
 #include <time.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <esp_ota_ops.h>
 #include "WiFiManager.h"
 #include "SerialLog.h"
 #include "AboutScreen.h"
@@ -20,6 +21,18 @@
 #include "DisplayText.h"
 #include "WeatherDisplay.h"
 #include "ResetDiagnostics.h"
+#include "OtaManager.h"
+
+#if defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
+// Let setup finish its checks before accepting a newly booted OTA image.
+extern "C" bool verifyRollbackLater(void)
+{
+    return true;
+}
+static void markOtaBootHealthy();
+static unsigned long otaHealthCheckStartedAt = 0;
+static unsigned long otaHealthLastLoopAt = 0;
+#endif
 #define TOUCH_CS   17
 #define TOUCH_IRQ  14
 
@@ -29,11 +42,32 @@ XPT2046_Touchscreen touch(TOUCH_CS, TOUCH_IRQ);
 // WIFI
 // ============================================================
 WiFiManager wifiManager;
+OtaManager otaManager;
 const char* NTP_SERVER = "pool.ntp.org";
 // ============================================================
 // TFT
 // ============================================================
 TFT_eSPI tft = TFT_eSPI();
+#if defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
+static void markOtaBootHealthy()
+{
+    const esp_partition_t* running = esp_ota_get_running_partition();
+    esp_ota_img_states_t state;
+    if (running == nullptr ||
+        esp_ota_get_state_partition(running, &state) != ESP_OK ||
+        state != ESP_OTA_IMG_PENDING_VERIFY)
+        return;
+
+    if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK)
+    {
+        Serial.println("OTA rollback: running image marked healthy");
+        return;
+    }
+
+    Serial.println("OTA rollback: startup health check failed");
+    esp_ota_mark_app_invalid_rollback_and_reboot();
+}
+#endif
 struct tm timeinfo;
 volatile bool timeSynchronized = false;
 volatile bool weatherUpdatePending = false;
@@ -109,13 +143,13 @@ uint8_t getAutomaticBacklightTarget()
     constexpr float LUX_HYSTERESIS = 12.0f; // lx
 
     uint8_t rawTarget;
-    if (bh1750Lux < 20.0f)
+    if (bh1750Lux < 10.0f)
         rawTarget = 32;
-    else if (bh1750Lux < 100.0f)
+    else if (bh1750Lux < 50.0f)
         rawTarget = 64;
-    else if (bh1750Lux < 300.0f)
+    else if (bh1750Lux < 200.0f)
         rawTarget = 112;
-    else if (bh1750Lux < 800.0f)
+    else if (bh1750Lux < 500.0f)
         rawTarget = 180;
     else
         rawTarget = 255;
@@ -373,18 +407,18 @@ void drawMainMenu()
     );
 
     // 12H / 24H
-    tft.drawRect(80, 95, 320, 45, TFT_WHITE);
+    tft.drawRect(80, 76, 320, 40, TFT_WHITE);
 
     tft.setTextColor(TFT_CYAN, COLOR_BG);
     tft.setTextFont(2);
 
     if (setting24Hour)
-        tft.drawString("24H", 240, 117);
+        tft.drawString("24H", 240, 96);
     else
-        tft.drawString("12H", 240, 117);
+        tft.drawString("12H", 240, 96);
 
     // DATA ON / OFF
-    tft.drawRect(80, 150, 320, 45, TFT_WHITE);
+    tft.drawRect(80, 122, 320, 40, TFT_WHITE);
 
     if (settingDate)
         tft.setTextColor(TFT_GREEN, COLOR_BG);
@@ -394,18 +428,22 @@ void drawMainMenu()
     tft.drawString(
         settingDate ? "DATA ON" : "DATA OFF",
         240,
-        172
+        142
     );
 
     // ABOUT
-    tft.drawRect(80, 205, 320, 45, TFT_WHITE);
+    tft.drawRect(80, 168, 320, 40, TFT_WHITE);
 
     tft.setTextColor(TFT_WHITE, COLOR_BG);
-    tft.drawString("ABOUT", 240, 227);
+    tft.drawString("ABOUT", 240, 188);
 
-    tft.drawRect(80, 260, 320, 45, TFT_WHITE);
+    tft.drawRect(80, 214, 320, 40, TFT_WHITE);
     tft.setTextColor(TFT_YELLOW, COLOR_BG);
-    tft.drawString("WEATHER ICONS", 240, 282);
+    tft.drawString("WEATHER ICONS", 240, 234);
+
+    tft.drawRect(80, 260, 320, 40, TFT_WHITE);
+    tft.setTextColor(TFT_CYAN, COLOR_BG);
+    tft.drawString("PAIR ANDROID APP", 240, 280);
 
     tft.setTextDatum(TL_DATUM);
 }
@@ -912,6 +950,10 @@ lastLowerPanelChange = millis();
         setStartupStatus(STARTUP_WEATHER, STARTUP_ERROR);
         setStartupStatus(STARTUP_TUYA, STARTUP_ERROR);
     }
+#if defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
+    otaHealthCheckStartedAt = millis();
+    otaHealthLastLoopAt = otaHealthCheckStartedAt;
+#endif
 }
 // ============================================================
 // LOWER PANEL UPDATE
@@ -989,6 +1031,23 @@ void stopScreenSaverForRamProtection()
 // ============================================================
 void loop()
 {
+    otaManager.handleLoop();
+#if defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
+    if (otaHealthCheckStartedAt != 0)
+    {
+        const unsigned long now = millis();
+        if (now - otaHealthLastLoopAt > 5000UL)
+            otaHealthCheckStartedAt = now;
+        otaHealthLastLoopAt = now;
+
+        if (now - otaHealthCheckStartedAt >= 10000UL)
+        {
+            markOtaBootHealthy();
+            otaHealthCheckStartedAt = 0;
+            otaHealthLastLoopAt = 0;
+        }
+    }
+#endif
     bool screenSaverRamProtected = monitorScreenSaverMemory();
     if (screenSaverRamProtected && screenSaverActive)
         stopScreenSaverForRamProtection();
@@ -1107,7 +1166,7 @@ if (touchPressed && !touchWasPressed)
             }
             else if (touchedScreen == SCREEN_MENU &&
                      p.x >= 1800 && p.x <= 2250 &&
-                     p.y >= 2300 && p.y <= 2800)
+                     p.y >= 2630 && p.y <= 3030)
             {
                 lastMenuTouch = millis();
                 setting24Hour = !setting24Hour;
@@ -1125,7 +1184,7 @@ if (touchPressed && !touchWasPressed)
             }
             else if (touchedScreen == SCREEN_MENU &&
                      p.x >= 1800 && p.x <= 2250 &&
-                     p.y >= 1600 && p.y <= 2050)
+                     p.y >= 1920 && p.y <= 2320)
             {
                 lastMenuTouch = millis();
                 settingDate = !settingDate;
@@ -1143,7 +1202,7 @@ if (touchPressed && !touchWasPressed)
             }
             else if (touchedScreen == SCREEN_MENU &&
                      p.x >= 1800 && p.x <= 2250 &&
-                     p.y >= 1050 && p.y <= 1500)
+                     p.y >= 1460 && p.y <= 1860)
             {
                 lastMenuTouch = millis();
                 Serial.println("TOUCH: OPEN ABOUT");
@@ -1151,11 +1210,26 @@ if (touchPressed && !touchWasPressed)
             }
             else if (touchedScreen == SCREEN_MENU &&
                      p.x >= 1800 && p.x <= 2250 &&
-                     p.y >= 500 && p.y <= 950)
+                     p.y >= 1000 && p.y <= 1400)
             {
                 lastMenuTouch = millis();
                 Serial.println("TOUCH: WEATHER ICON PREVIEW");
                 openWeatherIconPreview();
+            }
+            else if (touchedScreen == SCREEN_MENU &&
+                     p.x >= 1800 && p.x <= 2250 &&
+                     p.y >= 540 && p.y <= 940)
+            {
+                lastMenuTouch = millis();
+                if (otaManager.startPairing(tft))
+                {
+                    screenMode = SCREEN_ICON_PREVIEW;
+                    Serial.println("OTA pairing QR displayed");
+                }
+                else
+                {
+                    Serial.println("OTA pairing requires WiFi connection");
+                }
             }
             else if (touchedScreen == SCREEN_ICON_PREVIEW)
             {

@@ -7,6 +7,8 @@
 #include "TuyaService.h"
 #include "SerialLog.h"
 #include "ResetDiagnostics.h"
+#include "FirmwareVersion.h"
+#include "OtaManager.h"
 
 extern Preferences preferences;
 
@@ -48,6 +50,7 @@ extern bool bme680OK;
 extern bool bmeReadingOK;
 extern unsigned long lastBmeReading;
 extern TuyaService tuyaService;
+extern OtaManager otaManager;
 
 static void appendPageFooter(String& html, bool includeWeatherAttribution = false)
 {
@@ -71,6 +74,13 @@ void WebServerManager::setWeatherService(WeatherService* service)
 }
 void WebServerManager::begin()
 {
+    otaManager.begin(server);
+    const char* otaHeaders[] = {
+        "X-ORA-Nonce", "X-ORA-Auth", "X-ORA-Offset",
+        "X-ORA-Content-SHA256"
+    };
+    server.collectHeaders(otaHeaders, 4);
+
     server.on("/", [this]()
     {
         handleRoot();
@@ -101,6 +111,24 @@ void WebServerManager::begin()
     server.on("/api/status", [this]()
     {
         handleApiStatus();
+    });
+
+    server.on("/api/device", [this]()
+    {
+        JsonDocument doc;
+        const bool connected = WiFi.status() == WL_CONNECTED;
+        doc["device"] = ORA_DEVICE_NAME;
+        doc["model"] = ORA_DEVICE_MODEL;
+        doc["firmwareVersion"] = ORA_FIRMWARE_VERSION;
+        doc["wifiConnected"] = connected;
+        doc["ip"] = connected ? WiFi.localIP().toString() : String();
+        doc["rssi"] = connected ? WiFi.RSSI() : 0;
+        doc["state"] = connected ? "online" : "wifi_disconnected";
+        doc["uptime"] = millis() / 1000;
+
+        String json;
+        serializeJson(doc, json);
+        server.send(200, "application/json", json);
     });
 
     server.on("/api/logs", [this]()
@@ -146,6 +174,9 @@ void WebServerManager::handleApiStatus()
     Serial.println("API STATUS REQUEST RECEIVED");
     JsonDocument doc;
     doc["project"] = "ILI9488 CLOCK";
+    doc["device"] = ORA_DEVICE_NAME;
+    doc["model"] = ORA_DEVICE_MODEL;
+    doc["firmwareVersion"] = ORA_FIRMWARE_VERSION;
 
     struct tm timeinfo;
     if (getLocalTime(&timeinfo, 100))
