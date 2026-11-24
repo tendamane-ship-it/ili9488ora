@@ -21,6 +21,8 @@ private:
     void handleRoot();
     void handleSettings();
     void handleApiStatus();
+    void handleApiHistoryInfo();
+    void handleApiHistory();
     void handleApiPage();
     void handleApiLogs();
     void handleLogsPage();

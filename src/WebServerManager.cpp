@@ -9,6 +9,8 @@
 #include "ResetDiagnostics.h"
 #include "FirmwareVersion.h"
 #include "OtaManager.h"
+#include "SensorHistory.h"
+#include <stdlib.h>
 
 extern Preferences preferences;
 
@@ -129,6 +131,16 @@ void WebServerManager::begin()
         String json;
         serializeJson(doc, json);
         server.send(200, "application/json", json);
+    });
+
+    server.on("/api/history/info", HTTP_GET, [this]()
+    {
+        handleApiHistoryInfo();
+    });
+
+    server.on("/api/history", HTTP_GET, [this]()
+    {
+        handleApiHistory();
     });
 
     server.on("/api/logs", [this]()
@@ -310,6 +322,185 @@ void WebServerManager::handleApiStatus()
     Serial.println("API: sending response...");
     server.send(200, "application/json", json);
     Serial.println("API: response sent");
+}
+
+void WebServerManager::handleApiHistoryInfo()
+{
+    SensorHistory::Info info{};
+    SensorHistory::getInfo(info);
+
+    JsonDocument doc;
+    doc["schemaVersion"] = 1;
+    doc["available"] = info.available;
+    doc["storage"] = "SPIFFS";
+    doc["recordSizeBytes"] = SensorHistory::RECORD_SIZE_BYTES;
+    doc["sampleIntervalSeconds"] = SensorHistory::SAMPLE_INTERVAL_SECONDS;
+    doc["retentionSeconds"] = SensorHistory::RETENTION_SECONDS;
+    doc["capacity"] = SensorHistory::RECORD_CAPACITY;
+    doc["count"] = info.count;
+    if (info.count != 0)
+    {
+        doc["oldestId"] = info.oldestId;
+        doc["newestId"] = info.newestId;
+        doc["oldestTimestamp"] = info.oldestTimestamp;
+        doc["newestTimestamp"] = info.newestTimestamp;
+    }
+    else
+    {
+        doc["oldestId"] = nullptr;
+        doc["newestId"] = nullptr;
+        doc["oldestTimestamp"] = nullptr;
+        doc["newestTimestamp"] = nullptr;
+    }
+    doc["storageTotalBytes"] = info.storageTotalBytes;
+    doc["storageUsedBytes"] = info.storageUsedBytes;
+    doc["storageFreeBytes"] = info.storageFreeBytes;
+    if (info.retentionCutoffTimestamp != 0)
+        doc["retentionCutoffTimestamp"] = info.retentionCutoffTimestamp;
+    else
+        doc["retentionCutoffTimestamp"] = nullptr;
+
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
+}
+
+static bool parseHistoryUint32(
+    WebServer& server,
+    const char* name,
+    bool& present,
+    uint32_t& value
+)
+{
+    present = server.hasArg(name);
+    if (!present)
+        return true;
+
+    const String text = server.arg(name);
+    if (text.isEmpty())
+        return false;
+
+    char* end = nullptr;
+    const unsigned long long parsed = strtoull(text.c_str(), &end, 10);
+    if (end == text.c_str() || *end != '\0' || parsed > UINT32_MAX)
+        return false;
+
+    value = static_cast<uint32_t>(parsed);
+    return true;
+}
+
+void WebServerManager::handleApiHistory()
+{
+    SensorHistory::Info info{};
+    SensorHistory::getInfo(info);
+    if (!info.available)
+    {
+        server.send(503, "application/json", "{\"schemaVersion\":1,\"error\":\"history_unavailable\"}");
+        return;
+    }
+
+    bool hasFrom = false;
+    bool hasTo = false;
+    bool hasAfter = false;
+    bool hasAfterTimestamp = false;
+    uint32_t from = 0;
+    uint32_t to = UINT32_MAX;
+    uint32_t after = 0;
+    uint32_t afterTimestamp = 0;
+    uint32_t limit = 100;
+    if (!parseHistoryUint32(server, "from", hasFrom, from) ||
+        !parseHistoryUint32(server, "to", hasTo, to) ||
+        !parseHistoryUint32(server, "after", hasAfter, after) ||
+        !parseHistoryUint32(server, "afterTimestamp", hasAfterTimestamp, afterTimestamp))
+    {
+        server.send(400, "application/json", "{\"schemaVersion\":1,\"error\":\"invalid_query\"}");
+        return;
+    }
+
+    bool hasLimit = false;
+    if (!parseHistoryUint32(server, "limit", hasLimit, limit) ||
+        (hasLimit && (limit == 0 || limit > 100)) ||
+        (hasAfter && hasAfterTimestamp) ||
+        (hasFrom && hasTo && from > to))
+    {
+        server.send(400, "application/json", "{\"schemaVersion\":1,\"error\":\"invalid_query\"}");
+        return;
+    }
+
+    JsonDocument doc;
+    doc["schemaVersion"] = 1;
+    JsonArray records = doc["records"].to<JsonArray>();
+    uint32_t returned = 0;
+    uint32_t lastReturnedId = hasAfter ? after : 0;
+    uint32_t lastReturnedTimestamp = hasAfterTimestamp ? afterTimestamp : 0;
+    bool hasMore = false;
+    const uint32_t retentionCutoff = info.retentionCutoffTimestamp;
+
+    if (info.count != 0)
+    {
+        const uint32_t firstId = info.oldestId;
+        const uint32_t lastId = info.newestId;
+        for (uint32_t id = firstId; ; ++id)
+        {
+            SensorHistory::Record record{};
+            if (SensorHistory::readRecord(id, record) &&
+                !(hasAfter && id <= after) &&
+                !(hasAfterTimestamp && record.timestamp <= afterTimestamp) &&
+                !(hasFrom && record.timestamp < from) &&
+                !(hasTo && record.timestamp > to) &&
+                !(retentionCutoff != 0 && record.timestamp < retentionCutoff))
+            {
+                if (returned >= limit)
+                {
+                    hasMore = true;
+                    break;
+                }
+
+                JsonObject item = records.add<JsonObject>();
+                item["id"] = record.id;
+                item["timestamp"] = record.timestamp;
+                item["validMask"] = record.validMask;
+                if (record.validMask & (1U << 0))
+                    item["temperatureC"] = record.temperatureCentiC / 100.0f;
+                else
+                    item["temperatureC"] = nullptr;
+                if (record.validMask & (1U << 1))
+                    item["humidityPercent"] = record.humidityCentiPercent / 100.0f;
+                else
+                    item["humidityPercent"] = nullptr;
+                if (record.validMask & (1U << 2))
+                    item["pressureHpa"] = record.pressureDeciHpa / 10.0f;
+                else
+                    item["pressureHpa"] = nullptr;
+                if (record.validMask & (1U << 3))
+                    item["illuminanceLux"] = record.illuminanceLux;
+                else
+                    item["illuminanceLux"] = nullptr;
+                if (record.validMask & (1U << 4))
+                    item["gasResistanceKOhm"] = record.gasDeciKOhm / 10.0f;
+                else
+                    item["gasResistanceKOhm"] = nullptr;
+                if (record.validMask & (1U << 5))
+                    item["iaq"] = record.iaq;
+                else
+                    item["iaq"] = nullptr;
+
+                ++returned;
+                lastReturnedId = id;
+                lastReturnedTimestamp = record.timestamp;
+            }
+
+            if (id == lastId)
+                break;
+        }
+    }
+
+    doc["nextAfter"] = lastReturnedId;
+    doc["nextAfterTimestamp"] = lastReturnedTimestamp;
+    doc["hasMore"] = hasMore;
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
 }
 
 void WebServerManager::handleApiLogs()

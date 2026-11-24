@@ -1,17 +1,14 @@
-# ORA firmware: auditimi i API-së dhe konfigurimit të IP-së
+# ORA firmware: auditimi i API-se dhe konfigurimit te IP-se
 
 ## Fusha e auditimit
 
-Auditimi është bërë mbi burimet e degës `copilot-help` për ESP32-S3 DevKitC-1-N8 me ekran ILI9488. Nuk u ndryshua kodi. Ky dokument përshkruan gjendjen që është në degë; nuk është provë e gjendjes live të pajisjes.
+Auditimi u be mbi degen `codex-help` per ESP32-S3 DevKitC-1-N8 me ekran ILI9488. Gjendja e IP-se statike eshte ndryshim lokal ne `src/WiFiManager.cpp`; historiku i sensorave dhe endpoint-et dokumentohen veçmas ne `docs/sensor-history-api.md`.
 
-## Gjendja e IP-së statike
+## Gjendja e IP-se statike
 
-Në gjendjen aktuale të `src/WiFiManager.cpp`, klienti station lidhet me `WiFi.begin(...)` dhe DHCP. Nuk thirret `WiFi.config(...)`, prandaj IP-ja e ORA-s në rrjetin e routerit caktohet nga DHCP dhe mund të ndryshojë. Kredencialet ruhen në Preferences/NVS (`wifi`: `ssid`, `password`); `begin()` merr vlera bosh si parazgjedhje.
+`connectToWiFi()` kalon Wi-Fi ne STA, pastaj aplikon `WiFi.config()` para `WiFi.begin()` me IP `192.168.1.55`, gateway/DNS1 `192.168.1.1`, subnet `255.255.255.0` dhe DNS2 `1.1.1.1`. Nese konfigurimi deshton, gabimi regjistrohet ne Serial, funksioni kthen deshtim dhe WiFiManager ndjek rrjedhen ekzistuese te portalit. Kredencialet dhe rilidhja nuk ndryshohen.
 
-Kur lidhja dështon, pajisja aktivizon portalin AP `ili9488ora-setup`, me adresën `192.168.4.1/24`. Ky është IP i portalit lokal, jo IP statike e klientit në rrjetin e routerit.
-
-Nuk ka ndryshime lokale të padorëzuara në `WiFiManager` ose konfigurim IP në këtë checkout. Historia e Git tregon se konfigurimi i mëparshëm `192.168.1.133`, gateway `192.168.1.1`, subnet `255.255.255.0` dhe DNS `192.168.1.1` u hoq në commit `c450e0b` (“Përdor DHCP dhe shfaq arsyet e reset-it në panelin web”). Ky auditim nuk e rikthen atë konfigurim, sepse do të ndryshonte funksionimin aktual. IP-ja, SSID-ja dhe MAC-i aktual nuk mund të konfirmohen pa lexuar pajisjen live.
-
+Portali AP nuk perdor konfigurimin STA. Ai vazhdon me SSID `ili9488ora-setup` dhe adresen `192.168.4.1/24`. IP-ja e dhene nga routeri, SSID-ja aktive dhe MAC-i i pajisjes nuk mund te konfirmohen pa pajisjen live.
 ## Endpoint-et ekzistuese
 
 Serveri web funksionon në portën 80 kur pajisja është e lidhur me Wi-Fi. Rrugët kryesore regjistrohen në `src/WebServerManager.cpp`; rrugët OTA në `src/OtaManager.cpp`.

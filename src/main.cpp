@@ -22,6 +22,7 @@
 #include "WeatherDisplay.h"
 #include "ResetDiagnostics.h"
 #include "OtaManager.h"
+#include "SensorHistory.h"
 
 #if defined(CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE)
 // Let setup finish its checks before accepting a newly booted OTA image.
@@ -358,6 +359,7 @@ void updateNetworkIndicators(bool force = false)
 bool showingLocalSensors = false;
 bool showingTuyaData = false;
 bool lowerPanelHasContent = false;
+bool weatherOfflineMessageDisplayed = false;
 unsigned long lastLowerPanelChange = 0;
 unsigned long lastWeatherUpdate = 0;
 // ============================================================
@@ -702,6 +704,7 @@ void renderLowerPanel()
     else if (settingWeather)
         drawWeatherDisplay(tft, weather.getData());
     lowerPanelHasContent = true;
+    weatherOfflineMessageDisplayed = false;
     lastLowerPanelChange = millis();
 }
 
@@ -924,6 +927,7 @@ else
 
 waitForSlowStartupTest("before initializing sensors");
 initSensors();
+SensorHistory::begin();
 setStartupStatus(
     STARTUP_BME680,
     bme680OK ? STARTUP_OK : STARTUP_ERROR
@@ -974,12 +978,29 @@ void updateLowerPanel()
 
     if (availableCount == 0)
     {
-        if (lowerPanelHasContent)
-            tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
-        lowerPanelHasContent = false;
+        if (settingWeather && weatherServiceChecked && !weatherServiceReady)
+        {
+            if (!weatherOfflineMessageDisplayed)
+                drawWeatherUnavailable(tft);
+            weatherOfflineMessageDisplayed = true;
+            lowerPanelHasContent = true;
+        }
+        else
+        {
+            if (lowerPanelHasContent)
+                tft.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
+            lowerPanelHasContent = false;
+            weatherOfflineMessageDisplayed = false;
+        }
         showingLocalSensors = false;
         showingTuyaData = false;
         return;
+    }
+
+    if (weatherOfflineMessageDisplayed)
+    {
+        weatherOfflineMessageDisplayed = false;
+        lowerPanelHasContent = false;
     }
 
     if (!available[currentPanel] || !lowerPanelHasContent)
@@ -1276,6 +1297,7 @@ if (millis() - lastSensorRead >= SENSOR_READ_INTERVAL)
     lastSensorRead = millis();
     updateLocalSensors();
 }
+SensorHistory::update(timeSynchronized);
 // --------------------------------------------------------
 // SCREEN SAVER WAKE
 // --------------------------------------------------------
@@ -1578,6 +1600,7 @@ updateWeatherAnimations(
     tft,
     weather.getData(),
     screenMode == SCREEN_CLOCK &&
+        weatherServiceReady && weather.getData().valid &&
         !showingLocalSensors && !showingTuyaData
 );
     }

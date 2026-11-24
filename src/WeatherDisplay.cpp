@@ -185,11 +185,6 @@ static void drawWeatherIcon(
     // =========================
     else if (code >= 80 && code <= 82)
     {
-        if (data.isDay)
-            drawSun(display, cx, cy - 11, 15);
-        else
-            drawMoon(display, cx, cy - 11);
-
         drawCloudGroup(display, cx, cy);
         display.drawLine(
             cx - 9, cy + 15,
@@ -215,11 +210,6 @@ static void drawWeatherIcon(
     // =========================
     else if (code >= 85 && code <= 86)
     {
-        if (data.isDay)
-            drawSun(display, cx, cy - 11, 15);
-        else
-            drawMoon(display, cx, cy - 11);
-
         drawCloudGroup(display, cx, cy);
         drawSnowflake(display, cx - 8, cy + 19);
         drawSnowflake(display, cx + 3, cy + 23);
@@ -654,6 +644,16 @@ void drawWeatherDisplay(TFT_eSPI& display, const WeatherData& data)
     );
 
     display.print(pressureText);
+}
+
+void drawWeatherUnavailable(TFT_eSPI& display)
+{
+    display.fillRect(75, WEATHER_Y, 405, 75, COLOR_BG);
+    display.setTextDatum(MC_DATUM);
+    display.setTextFont(2);
+    display.setTextColor(TFT_RED, COLOR_BG);
+    display.drawString("WEATHER OFFLINE", 277, WEATHER_Y + 37);
+    display.setTextDatum(TL_DATUM);
 }
 
 void updateWeatherAnimations(

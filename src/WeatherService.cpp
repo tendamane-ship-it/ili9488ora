@@ -3,9 +3,91 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "SerialLog.h"
+#include <time.h>
 
 #define WEATHER_LAT  39.8750
 #define WEATHER_LON  20.0050
+
+namespace
+{
+constexpr time_t MINIMUM_VALID_EPOCH = 1577836800;
+
+bool isKnownWeatherCode(int code)
+{
+    return (code >= 0 && code <= 3) || code == 45 || code == 48 ||
+        (code >= 51 && code <= 57) || (code >= 61 && code <= 67) ||
+        (code >= 71 && code <= 77) || (code >= 80 && code <= 82) ||
+        (code >= 85 && code <= 86) || (code >= 95 && code <= 99);
+}
+
+bool parseIsDay(JsonVariantConst value, bool& isDay)
+{
+    if (value.is<bool>())
+    {
+        isDay = value.as<bool>();
+        return true;
+    }
+
+    if (value.is<int>())
+    {
+        const int valueAsInt = value.as<int>();
+        if (valueAsInt == 0 || valueAsInt == 1)
+        {
+            isDay = valueAsInt == 1;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool parseLocalMinutes(const String& isoTime, int& minutes)
+{
+    const int separator = isoTime.indexOf('T');
+    if (separator < 0 || isoTime.length() <= separator + 5)
+        return false;
+
+    int hour = -1;
+    int minute = -1;
+    if (sscanf(isoTime.c_str() + separator + 1, "%2d:%2d", &hour, &minute) != 2 ||
+        hour < 0 || hour > 23 || minute < 0 || minute > 59)
+        return false;
+
+    minutes = hour * 60 + minute;
+    return true;
+}
+
+bool localDayFromSunriseSunset(
+    const String& responseDate,
+    const String& sunrise,
+    const String& sunset,
+    bool& isDay
+)
+{
+    const time_t now = time(nullptr);
+    if (now < MINIMUM_VALID_EPOCH)
+        return false;
+
+    struct tm localTime{};
+    if (localtime_r(&now, &localTime) == nullptr)
+        return false;
+
+    char localDate[11];
+    if (strftime(localDate, sizeof(localDate), "%Y-%m-%d", &localTime) == 0 ||
+        responseDate != localDate)
+        return false;
+
+    int sunriseMinutes = 0;
+    int sunsetMinutes = 0;
+    if (!parseLocalMinutes(sunrise, sunriseMinutes) ||
+        !parseLocalMinutes(sunset, sunsetMinutes))
+        return false;
+
+    const int currentMinutes = localTime.tm_hour * 60 + localTime.tm_min;
+    isDay = currentMinutes >= sunriseMinutes && currentMinutes < sunsetMinutes;
+    return true;
+}
+}
 
 WeatherService::WeatherService()
     : dataMutex(xSemaphoreCreateMutex())
@@ -157,13 +239,14 @@ bool WeatherService::update()
     updatedData.apparentTemperature =
         current["apparent_temperature"] | 0.0;
 
-    updatedData.weatherCode =
-        current["weather_code"] | -1;
-
-    updatedData.isDay =
-        current["is_day"] | false;
-
-    updatedData.valid = true;
+    const JsonVariantConst weatherCodeField = current["weather_code"];
+    if (!weatherCodeField.is<int>() ||
+        !isKnownWeatherCode(weatherCodeField.as<int>()))
+    {
+        Serial.println("Weather: current weather_code is missing or invalid");
+        return false;
+    }
+    updatedData.weatherCode = weatherCodeField.as<int>();
 
     // --------------------------------------------------------
     // DAILY FORECAST
@@ -203,6 +286,29 @@ bool WeatherService::update()
 
     JsonArray weatherCodes =
         dailyData["weather_code"].as<JsonArray>();
+
+    bool apiIsDay = false;
+    const bool apiIsDayValid = parseIsDay(current["is_day"], apiIsDay);
+    bool localIsDay = false;
+    const String today = dates[0] | "";
+    const String sunriseToday = sunrise[0] | "";
+    const String sunsetToday = sunset[0] | "";
+    if (localDayFromSunriseSunset(today, sunriseToday, sunsetToday, localIsDay))
+    {
+        updatedData.isDay = localIsDay;
+        Serial.println("Weather day/night: local time compared with sunrise/sunset");
+    }
+    else if (apiIsDayValid)
+    {
+        updatedData.isDay = apiIsDay;
+        Serial.println("Weather day/night: Open-Meteo is_day fallback");
+    }
+    else
+    {
+        Serial.println("Weather: is_day and local sunrise/sunset are unavailable");
+        return false;
+    }
+    updatedData.valid = true;
 
     for (int i = 0; i < FORECAST_DAYS; i++)
     {

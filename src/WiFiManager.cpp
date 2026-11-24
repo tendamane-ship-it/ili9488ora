@@ -58,7 +58,18 @@ bool WiFiManager::connectToWiFi(uint32_t timeoutMs) {
         return false;
     }
 
-    Serial.println("Connecting to WiFi using DHCP...");
+    const IPAddress staticIP(192, 168, 1, 55);
+    const IPAddress gateway(192, 168, 1, 1);
+    const IPAddress subnet(255, 255, 255, 0);
+    const IPAddress dns1(192, 168, 1, 1);
+    const IPAddress dns2(1, 1, 1, 1);
+
+    if (!WiFi.config(staticIP, gateway, subnet, dns1, dns2)) {
+        Serial.println("WiFi: static IP configuration failed; STA not configured with static IP");
+        return false;
+    }
+
+    Serial.println("Connecting to WiFi using static IP 192.168.1.55...");
 
     WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 
