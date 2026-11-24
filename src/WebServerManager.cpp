@@ -10,6 +10,8 @@
 #include "FirmwareVersion.h"
 #include "OtaManager.h"
 #include "SensorHistory.h"
+#include "WiFiManager.h"
+#include "TvPage.h"
 #include <stdlib.h>
 
 extern Preferences preferences;
@@ -53,6 +55,7 @@ extern bool bmeReadingOK;
 extern unsigned long lastBmeReading;
 extern TuyaService tuyaService;
 extern OtaManager otaManager;
+extern WiFiManager wifiManager;
 
 static void appendPageFooter(String& html, bool includeWeatherAttribution = false)
 {
@@ -86,6 +89,13 @@ void WebServerManager::begin()
     server.on("/", [this]()
     {
         handleRoot();
+    });
+
+    server.on("/tv", HTTP_GET, [this]()
+    {
+        Serial.printf("Free heap BEFORE TV page: %u\n", ESP.getFreeHeap());
+        server.send_P(200, "text/html; charset=UTF-8", ORA_TV_PAGE);
+        Serial.printf("Free heap AFTER TV page: %u\n", ESP.getFreeHeap());
     });
 
     server.on("/settings", [this]()
@@ -131,6 +141,54 @@ void WebServerManager::begin()
         String json;
         serializeJson(doc, json);
         server.send(200, "application/json", json);
+    });
+
+    server.on("/api/network/config", HTTP_GET, [this]() {
+        const WiFiManager::NetworkConfig config = wifiManager.getNetworkConfig();
+        JsonDocument doc;
+        doc["mode"] = config.useDhcp ? "dhcp" : "static";
+        doc["ipAddress"] = config.ipAddress;
+        doc["gateway"] = config.gateway;
+        doc["subnetMask"] = config.subnetMask;
+        doc["dns1"] = config.dns1;
+        doc["dns2"] = config.dns2;
+        doc["currentIp"] = WiFi.localIP().toString();
+        doc["wifiConnected"] = WiFi.status() == WL_CONNECTED;
+        doc["rssi"] = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+        String json;
+        serializeJson(doc, json);
+        server.send(200, "application/json", json);
+    });
+
+    server.on("/api/network/config", HTTP_POST, [this]() {
+        JsonDocument request;
+        if (deserializeJson(request, server.arg("plain"))) {
+            server.send(400, "application/json", "{\"ok\":false,\"error\":\"invalid_json\"}");
+            return;
+        }
+        const String mode = request["mode"] | "";
+        if (mode != "dhcp" && mode != "static") {
+            server.send(400, "application/json", "{\"ok\":false,\"error\":\"invalid_mode\"}");
+            return;
+        }
+        WiFiManager::NetworkConfig config = wifiManager.getNetworkConfig();
+        config.useDhcp = mode == "dhcp";
+        if (!config.useDhcp) {
+            config.ipAddress = request["ipAddress"] | "";
+            config.gateway = request["gateway"] | "";
+            config.subnetMask = request["subnetMask"] | "";
+            config.dns1 = request["dns1"] | "";
+            config.dns2 = request["dns2"] | "";
+        }
+        String error;
+        if (!wifiManager.saveNetworkConfig(config, error)) {
+            const String body = String("{\"ok\":false,\"error\":\"") + error + "\"}";
+            server.send(400, "application/json", body);
+            return;
+        }
+        server.send(200, "application/json", "{\"ok\":true,\"state\":\"saved_restarting\"}");
+        delay(400);
+        ESP.restart();
     });
 
     server.on("/api/history/info", HTTP_GET, [this]()
@@ -314,6 +372,25 @@ void WebServerManager::handleApiStatus()
         doc["windSpeed"] = data.windSpeed;
         doc["weatherCode"] = data.weatherCode;
         doc["weatherValid"] = data.valid;
+
+        JsonArray forecast = doc["weatherDaily"].to<JsonArray>();
+        for (int i = 0; i < WeatherService::FORECAST_DAYS; ++i)
+        {
+            const DailyWeather day = weather->getDaily(i);
+            if (day.date.isEmpty() || day.weatherCode < 0)
+                continue;
+
+            JsonObject item = forecast.add<JsonObject>();
+            item["date"] = day.date;
+            item["temperatureMin"] = day.temperatureMin;
+            item["temperatureMax"] = day.temperatureMax;
+            item["precipitationSum"] = day.precipitationSum;
+            item["precipitationProbability"] = day.precipitationProbability;
+            item["windSpeedMax"] = day.windSpeedMax;
+            item["sunrise"] = day.sunrise;
+            item["sunset"] = day.sunset;
+            item["weatherCode"] = day.weatherCode;
+        }
     }
 
     String json;

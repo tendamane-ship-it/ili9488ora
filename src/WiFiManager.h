@@ -10,7 +10,18 @@
 
 class WiFiManager {
 public:
+    struct NetworkConfig {
+        bool useDhcp = false;
+        String ipAddress = "192.168.1.55";
+        String gateway = "192.168.1.1";
+        String subnetMask = "255.255.255.0";
+        String dns1 = "192.168.1.1";
+        String dns2 = "1.1.1.1";
+    };
+
     WiFiManager();
+    NetworkConfig getNetworkConfig() const;
+    bool saveNetworkConfig(const NetworkConfig& config, String& error);
 
     // Ngarkon kredencialet dhe provon lidhjen me routerin.
     // Nëse lidhja dështon, hap portalin e konfigurimit.
@@ -33,6 +44,7 @@ private:
 
     String wifiSSID;
     String wifiPassword;
+    NetworkConfig networkConfig;
 
     bool portalActive;
     bool serverStarted;

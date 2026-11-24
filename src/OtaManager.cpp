@@ -13,6 +13,35 @@
 
 namespace
 {
+struct __attribute__((packed)) OraOtaImageMetadata
+{
+    uint8_t magic[8];
+    uint8_t schema;
+    uint8_t modelLength;
+    uint8_t versionLength;
+    uint8_t reserved;
+    char model[64];
+    char version[32];
+};
+
+static_assert(sizeof(OraOtaImageMetadata) == 108,
+              "ORA OTA metadata must remain exactly 108 bytes");
+static_assert(sizeof(ORA_DEVICE_MODEL) - 1 <= 64,
+              "ORA device model exceeds OTA metadata field");
+static_assert(sizeof(ORA_FIRMWARE_VERSION) - 1 <= 32,
+              "ORA firmware version exceeds OTA metadata field");
+
+__attribute__((used, section(".rodata.ora_ota_metadata")))
+const OraOtaImageMetadata otaImageMetadata = {
+    {'O', 'R', 'A', 'O', 'T', 'A', '1', 0},
+    1,
+    static_cast<uint8_t>(sizeof(ORA_DEVICE_MODEL) - 1),
+    static_cast<uint8_t>(sizeof(ORA_FIRMWARE_VERSION) - 1),
+    0,
+    ORA_DEVICE_MODEL,
+    ORA_FIRMWARE_VERSION
+};
+
 constexpr char OTA_NAMESPACE[] = "ora_ota";
 constexpr unsigned long PAIRING_WINDOW_MS = 120000UL;
 constexpr unsigned long CHALLENGE_WINDOW_MS = 30000UL;
@@ -158,6 +187,10 @@ OtaManager::OtaManager()
 void OtaManager::begin(WebServer& webServer)
 {
     server = &webServer;
+    // The volatile read keeps the metadata section reachable when the linker
+    // garbage-collects unused data sections in optimized firmware builds.
+    volatile const uint8_t* metadataAnchor = otaImageMetadata.magic;
+    (void)*metadataAnchor;
     Preferences prefs;
     prefs.begin(OTA_NAMESPACE, true);
     pairingKey = prefs.getString("key", "");

@@ -26,6 +26,12 @@ bool WiFiManager::begin(
 
     wifiSSID = preferences.getString("ssid", defaultSSID);
     wifiPassword = preferences.getString("password", defaultPassword);
+    networkConfig.useDhcp = preferences.getBool("ip_dhcp", false);
+    networkConfig.ipAddress = preferences.getString("ip_address", networkConfig.ipAddress);
+    networkConfig.gateway = preferences.getString("gateway", networkConfig.gateway);
+    networkConfig.subnetMask = preferences.getString("subnet", networkConfig.subnetMask);
+    networkConfig.dns1 = preferences.getString("dns1", networkConfig.dns1);
+    networkConfig.dns2 = preferences.getString("dns2", networkConfig.dns2);
     Serial.print("Saved SSID: ");
 Serial.println(wifiSSID);
 Serial.print("Saved password length: ");
@@ -58,18 +64,21 @@ bool WiFiManager::connectToWiFi(uint32_t timeoutMs) {
         return false;
     }
 
-    const IPAddress staticIP(192, 168, 1, 55);
-    const IPAddress gateway(192, 168, 1, 1);
-    const IPAddress subnet(255, 255, 255, 0);
-    const IPAddress dns1(192, 168, 1, 1);
-    const IPAddress dns2(1, 1, 1, 1);
-
-    if (!WiFi.config(staticIP, gateway, subnet, dns1, dns2)) {
-        Serial.println("WiFi: static IP configuration failed; STA not configured with static IP");
-        return false;
+    if (!networkConfig.useDhcp) {
+        IPAddress staticIP, gateway, subnet, dns1, dns2;
+        if (!staticIP.fromString(networkConfig.ipAddress) ||
+            !gateway.fromString(networkConfig.gateway) ||
+            !subnet.fromString(networkConfig.subnetMask) ||
+            !dns1.fromString(networkConfig.dns1) ||
+            !dns2.fromString(networkConfig.dns2) ||
+            !WiFi.config(staticIP, gateway, subnet, dns1, dns2)) {
+            Serial.println("WiFi: saved static IP configuration is invalid");
+            return false;
+        }
+        Serial.printf("Connecting to WiFi using static IP %s...\n", networkConfig.ipAddress.c_str());
+    } else {
+        Serial.println("Connecting to WiFi using DHCP...");
     }
-
-    Serial.println("Connecting to WiFi using static IP 192.168.1.55...");
 
     WiFi.begin(wifiSSID.c_str(), wifiPassword.c_str());
 
@@ -332,6 +341,62 @@ void WiFiManager::handleClient() {
         reconnectAttempts,
         static_cast<unsigned long>(delayMs)
     );
+}
+
+WiFiManager::NetworkConfig WiFiManager::getNetworkConfig() const {
+    return networkConfig;
+}
+
+static uint32_t ipv4ToUint32(const IPAddress& address) {
+    return (static_cast<uint32_t>(address[0]) << 24) |
+           (static_cast<uint32_t>(address[1]) << 16) |
+           (static_cast<uint32_t>(address[2]) << 8) |
+           static_cast<uint32_t>(address[3]);
+}
+
+static bool parseUnicastIPv4(const String& text, IPAddress& result) {
+    if (!result.fromString(text) || text != result.toString()) return false;
+    const uint8_t first = result[0];
+    return first != 0 && first < 224 &&
+           !(result[0] == 255 && result[1] == 255 && result[2] == 255 && result[3] == 255);
+}
+
+bool WiFiManager::saveNetworkConfig(const NetworkConfig& config, String& error) {
+    NetworkConfig validated = config;
+    if (!validated.useDhcp) {
+        IPAddress ip, gateway, subnet, dns1, dns2;
+        if (!parseUnicastIPv4(validated.ipAddress, ip) ||
+            !parseUnicastIPv4(validated.gateway, gateway) ||
+            !subnet.fromString(validated.subnetMask) ||
+            validated.subnetMask != subnet.toString() ||
+            !parseUnicastIPv4(validated.dns1, dns1) ||
+            !parseUnicastIPv4(validated.dns2, dns2)) {
+            error = "invalid_ipv4";
+            return false;
+        }
+        const uint32_t mask = ipv4ToUint32(subnet);
+        const uint32_t inverseMask = ~mask;
+        if (mask == 0 || inverseMask == 0 ||
+            (inverseMask & (inverseMask + 1U)) != 0 ||
+            (ipv4ToUint32(ip) & mask) != (ipv4ToUint32(gateway) & mask) ||
+            (ipv4ToUint32(ip) & inverseMask) == 0 ||
+            (ipv4ToUint32(ip) & inverseMask) == inverseMask ||
+            ip == gateway) {
+            error = "invalid_network_range";
+            return false;
+        }
+    }
+
+    preferences.begin("wifi", false);
+    preferences.putBool("ip_dhcp", validated.useDhcp);
+    preferences.putString("ip_address", validated.ipAddress);
+    preferences.putString("gateway", validated.gateway);
+    preferences.putString("subnet", validated.subnetMask);
+    preferences.putString("dns1", validated.dns1);
+    preferences.putString("dns2", validated.dns2);
+    preferences.end();
+    networkConfig = validated;
+    return true;
 }
 
 bool WiFiManager::isConnected() const {
